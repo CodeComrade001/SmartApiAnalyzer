@@ -1,0 +1,111 @@
+# =========================
+# .NET CORE / C#
+# =========================
+
+# Build outputs
+bin/
+obj/
+
+# Visual Studio / Rider / VS Code
+.vs/
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Debug / publish outputs
+Debug/
+Release/
+x64/
+x86/
+publish/
+
+# Dotnet tools
+.dotnet/
+
+# ASP.NET Scaffolding
+ScaffoldingReadMe.txt
+
+# Logs
+*.log
+
+# User secrets (VERY IMPORTANT for backend security)
+secrets.json
+appsettings.Development.json
+
+# =========================
+# C / C++ (your original section kept but cleaned)
+# =========================
+
+# Object files
+*.o
+*.ko
+*.obj
+*.elf
+
+# Linker output
+*.ilk
+*.map
+*.exp
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Libraries
+*.lib
+*.a
+*.la
+*.lo
+
+# Shared objects (Windows/Linux/macOS)
+*.dll
+*.so
+*.so.*
+*.dylib
+
+# Executables
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
+
+# Debug files
+*.dSYM/
+*.su
+*.idb
+*.pdb
+*.dwo
+
+# Kernel Module Compile Results
+*.mod*
+*.cmd
+.tmp_versions/
+modules.order
+Module.symvers
+Mkfile.old
+dkms.conf
+
+# =========================
+# Misc / OS
+# =========================
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+
+# Node (if frontend exists in same repo later)
+node_modules/
+dist/
+.env
+
+# ignored custom folders
+.sixth/
+notes/
