@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Mvc;
 using SmartApiAnalyzer.Application.Services.Interface.ControllerServices;
 using SmartApiAnalyzer.Application.Services.Interface.Events;
 using SmartApiAnalyzer.Application.UseCases.Metrics;
+using SmartApiAnalyzer.Infrastructure.queue;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -73,6 +74,16 @@ builder.Services.AddScoped<ILogService, LogService>();
 builder.Services.AddScoped<IMetricsService, MetricsService>();
 builder.Services.AddScoped<ISubscriptionService, SUbscriptionService>();
 
+builder.Services.AddSingleton<IEventQueue, InMemoryEventQueue>();
+builder.Services.AddSingleton<IEventBus, InMemoryEventBus>();
+
+builder.Services.AddHostedService<LogProcessingWorker>();
+
+builder.Services.AddScoped<ICoordinator, AgentCoordinator>();
+
+builder.Services.AddScoped<IAgent, SecurityAgent>();
+// builder.AddScoped<IAgent, PerformanceAgent>();
+// builder.AddScoped<IAgent, CostAgent>();
 
 // -------------------------------------------------------
 // 5. Use Cases

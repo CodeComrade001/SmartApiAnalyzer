@@ -18,17 +18,22 @@ public class AgentCoordinator : ICoordinator
 
   public async Task RunAsync(
       LogIngestedEvent evt,
-      CancellationToken ct = default)
+      CancellationToken ct)
   {
-    foreach (var agent in _agents)
+    var ordered = _agents.OrderBy(x => x.Priority);
+
+    foreach (var agent in ordered)
     {
       await _notifier.NotifyAsync(
           $"{agent.Name} started", evt);
 
-      await agent.ExecuteAsync(evt, ct);
+      var result = await agent.ExecuteAsync(evt, ct);
 
       await _notifier.NotifyAsync(
-          $"{agent.Name} completed", evt);
+          $"{agent.Name}: {result.Message}", evt);
+
+      if (result.StopProcessing)
+        break;
     }
   }
 }

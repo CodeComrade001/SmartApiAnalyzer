@@ -2,27 +2,24 @@ using System.Collections.Concurrent;
 using SmartApiAnalyzer.Application.Services.Interface.Events;
 using SmartApiAnalyzer.Domain.Events;
 
+using System.Threading.Channels;
+namespace SmartApiAnalyzer.Infrastructure.queue;
+
 public class InMemoryEventQueue : IEventQueue
 {
-  private readonly ConcurrentQueue<LogIngestedEvent> _queue = new();
+  private readonly Channel<LogIngestedEvent> _channel =
+      Channel.CreateUnbounded<LogIngestedEvent>();
 
-  public ValueTask<LogIngestedEvent> DequeueAsync(CancellationToken cancellationToken = default)
+  public async ValueTask EnqueueAsync(
+      LogIngestedEvent logEvent,
+      CancellationToken ct = default)
   {
-    throw new NotImplementedException();
+    await _channel.Writer.WriteAsync(logEvent, ct);
   }
 
-  public void Enqueue(LogIngestedEvent logEvent)
+  public async ValueTask<LogIngestedEvent> DequeueAsync(
+      CancellationToken ct = default)
   {
-    _queue.Enqueue(logEvent);
-  }
-
-  public ValueTask EnqueueAsync(LogIngestedEvent logEvent, CancellationToken cancellationToken = default)
-  {
-    throw new NotImplementedException();
-  }
-
-  public bool TryDequeue(out LogIngestedEvent logEvent)
-  {
-    return _queue.TryDequeue(out logEvent);
+    return await _channel.Reader.ReadAsync(ct);
   }
 }
