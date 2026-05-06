@@ -13,6 +13,8 @@ import Subscription from "./pages/Subscription";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/not-found";
 import Landing from "./pages/Landing";
+import CodeComplexity from "./pages/CodeComplexity";
+import MCPServer from "./pages/MCPServer";
 
 function LoadingFallback() {
   return (
@@ -47,6 +49,8 @@ function AppRouter() {
           <Route path="/dashboard/insights" component={Insights} />
           <Route path="/dashboard/subscription" component={Subscription} />
           <Route path="/dashboard/settings" component={Settings} />
+          <Route path="/dashboard/code-complexity" component={CodeComplexity} />
+          <Route path="/dashboard/mcp-server" component={MCPServer} />
           <Route component={NotFound} />
         </Switch>
       </Suspense>
@@ -57,10 +61,10 @@ function AppRouter() {
 function App() {
   return (
     <ThemeProvider defaultTheme="dark" storageKey="analyzer-theme">
-        <TooltipProvider>
-            <AppRouter />
-          <Toaster />
-        </TooltipProvider>
+      <TooltipProvider>
+        <AppRouter />
+        <Toaster />
+      </TooltipProvider>
     </ThemeProvider>
   );
 }

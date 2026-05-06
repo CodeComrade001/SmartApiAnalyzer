@@ -24,6 +24,8 @@ import {
   User,
   ArrowLeft,
   Sparkles,
+  FileCode2,
+  Server,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -47,10 +49,18 @@ import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { motion } from "framer-motion";
 
-const navItems = [
+const analyticsNavItems = [
   { name: "Overview", href: "/dashboard", icon: Home },
   { name: "Endpoints", href: "/dashboard/endpoints", icon: Activity },
   { name: "Insights", href: "/dashboard/insights", icon: Zap },
+];
+
+const toolsNavItems = [
+  { name: "Code Complexity", href: "/dashboard/code-complexity", icon: FileCode2 },
+  { name: "MCP Server", href: "/dashboard/mcp-server", icon: Server },
+];
+
+const accountNavItems = [
   { name: "Subscription", href: "/dashboard/subscription", icon: CreditCard },
   { name: "Settings", href: "/dashboard/settings", icon: Settings },
 ];
@@ -78,7 +88,51 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <SidebarGroupLabel>Analytics</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {navItems.map((item) => (
+                  {analyticsNavItems.map((item) => (
+                    <SidebarMenuItem key={item.name}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={location === item.href}
+                        tooltip={item.name}
+                      >
+                        <Link href={item.href}>
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.name}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+
+            <SidebarGroup>
+              <SidebarGroupLabel>Tools</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {toolsNavItems.map((item) => (
+                    <SidebarMenuItem key={item.name}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={location === item.href}
+                        tooltip={item.name}
+                      >
+                        <Link href={item.href}>
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.name}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+
+            <SidebarGroup>
+              <SidebarGroupLabel>Account</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {accountNavItems.map((item) => (
                     <SidebarMenuItem key={item.name}>
                       <SidebarMenuButton
                         asChild
@@ -158,7 +212,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </SidebarFooter>
         </Sidebar>
 
-        <div className=" flex flex-1 flex-col ">
+        <div className=" flex flex-1 flex-col">
           <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b border-border/60 glass-strong px-4 sm:px-6">
             <SidebarTrigger />
             <div className="flex flex-1 items-center gap-3 md:gap-4">
@@ -194,7 +248,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
           </header>
 
-          <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+          <main className="relative flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
             <motion.div
               key={location}
               initial={{ opacity: 0, y: 12 }}
