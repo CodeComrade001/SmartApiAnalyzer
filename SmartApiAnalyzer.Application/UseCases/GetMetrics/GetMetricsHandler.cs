@@ -1,4 +1,4 @@
-using Domain.Entities;
+using SmartApiAnalyzer.Domain.Entities;
 using SmartApiAnalyzer.Application.Services.Interface.RepositoriesInterface;
 
 namespace SmartApiAnalyzer.Application.UseCases.Metrics;
@@ -7,10 +7,10 @@ public class GenerateMetricsUseCase
 {
   private readonly ILogRepository _repo;
 
-  public GenerateMetricsUseCase(ILogRepository repo)
-  {
-    _repo = repo;
-  }
+  // public GenerateMetricsUseCase(ILogRepository repo)
+  // {
+  //   _repo = repo;
+  // }
 
   public async Task<EndpointMetrics> ExecuteAsync(string tenantId, string endpoint)
   {

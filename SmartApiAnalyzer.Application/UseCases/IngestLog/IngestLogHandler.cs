@@ -1,5 +1,5 @@
 using Application.DTOs;
-using Domain.Entities;
+using SmartApiAnalyzer.Domain.Entities;
 using SmartApiAnalyzer.Application.Services.Interface.RepositoriesInterface;
 
 namespace Application.UseCases.IngestLog;
@@ -26,8 +26,9 @@ public class IngestLogUseCase
             TimestampUtc = DateTime.UtcNow
         };
 
-        await _repo.AddAsync(log);
+        // await _repo.AddAsync(log);
 
         // Later → publish event
+
     }
 }

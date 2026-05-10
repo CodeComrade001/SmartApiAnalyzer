@@ -10,7 +10,7 @@ using SmartApiAnalyzer.Application.Services.Interface.Events;
 using SmartApiAnalyzer.Application.Services.Interface.RepositoriesInterface;
 using SmartApiAnalyzer.Domain.Events;
 
-namespace Infrastructure.Services;
+namespace SmartApiAnalyzer.Application.Services;
 
 public class LogService : ILogService
 {
@@ -49,7 +49,7 @@ public class LogService : ILogService
         Timestamp = request.Timestamp
       };
 
-      // _logs.Add(log);
+      // TODO : _logs.Add(log);
 
       await _eventBus.PublishAsync(
           new LogIngestedEvent(

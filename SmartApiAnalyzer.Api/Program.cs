@@ -1,48 +1,37 @@
 using Application.UseCases.IngestLog;
-using Application.Validators;
-
 using FluentValidation;
 using FluentValidation.AspNetCore;
-
-using Infrastructure.Services;
-
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using SmartApiAnalyzer.Api.Validators;
+using SmartApiAnalyzer.Application.Services;
+using SmartApiAnalyzer.Application.Services.Interface.Agents;
 using SmartApiAnalyzer.Application.Services.Interface.ControllerServices;
 using SmartApiAnalyzer.Application.Services.Interface.Events;
+using SmartApiAnalyzer.Application.Services.Interface.RepositoriesInterface;
 using SmartApiAnalyzer.Application.UseCases.Metrics;
+using SmartApiAnalyzer.Infrastructure.Agents;
+using SmartApiAnalyzer.Infrastructure.Agents.Factory;
+using SmartApiAnalyzer.Infrastructure.Persistence;
 using SmartApiAnalyzer.Infrastructure.queue;
+using SmartApiAnalyzer.Infrastructure.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// ======================================================
+// CORE FRAMEWORK SERVICES
+// ======================================================
 
-// =======================================================
-// SERVICE REGISTRATION
-// =======================================================
-
-
-// -------------------------------------------------------
-// 1. Controllers
-// Registers API controllers
-// -------------------------------------------------------
 builder.Services.AddControllers();
-
-
-// -------------------------------------------------------
-// 2. FluentValidation
-// Automatic request DTO validation
-// -------------------------------------------------------
+// builder.Services.AddDbContext<AppDbContext>(options =>
+//     options.UseSqlServer(
+//         builder.Configuration.GetConnectionString("DefaultConnection")));
 builder.Services
     .AddFluentValidationAutoValidation()
     .AddFluentValidationClientsideAdapters();
 
-// Scan assembly for all validators automatically
-// builder.Services.AddValidatorsFromAssemblyContaining<IngestLogRequestValidator>();
+builder.Services.AddValidatorsFromAssemblyContaining<IngestLogValidator>();
 
-
-// -------------------------------------------------------
-// 3. Custom Validation Response Format
-// Standardizes model validation errors
-// -------------------------------------------------------
 builder.Services.Configure<ApiBehaviorOptions>(options =>
 {
   options.InvalidModelStateResponseFactory = context =>
@@ -52,8 +41,7 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
           .Select(x => new
           {
             Field = x.Key,
-            Errors = x.Value!.Errors
-                  .Select(e => e.ErrorMessage)
+            Errors = x.Value!.Errors.Select(e => e.ErrorMessage)
           });
 
     return new BadRequestObjectResult(new
@@ -66,63 +54,87 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
 });
 
 
-// -------------------------------------------------------
-// 4. Application Services
-// Business logic layer
-// -------------------------------------------------------
+
+// ======================================================
+// APPLICATION SERVICES
+// ======================================================
+
 builder.Services.AddScoped<ILogService, LogService>();
 builder.Services.AddScoped<IMetricsService, MetricsService>();
 builder.Services.AddScoped<ISubscriptionService, SUbscriptionService>();
 
+
+
+// ======================================================
+// REPOSITORIES
+// ======================================================
+
+builder.Services.AddScoped<ILogRepository, LogRepository>();
+
+
+
+// ======================================================
+// EVENT SYSTEM
+// ======================================================
+
 builder.Services.AddSingleton<IEventQueue, InMemoryEventQueue>();
 builder.Services.AddSingleton<IEventBus, InMemoryEventBus>();
 
-builder.Services.AddHostedService<LogProcessingWorker>();
 
+
+// ======================================================
+// REALTIME + AGENT INFRASTRUCTURE
+// ======================================================
+
+builder.Services.AddSingleton<IRealtimeNotifier, RealtimeNotifier>();
+builder.Services.AddScoped<IAgentRegistry, AgentRegistry>();
 builder.Services.AddScoped<ICoordinator, AgentCoordinator>();
 
-builder.Services.AddScoped<IAgent, SecurityAgent>();
-// builder.AddScoped<IAgent, PerformanceAgent>();
-// builder.AddScoped<IAgent, CostAgent>();
 
-// -------------------------------------------------------
-// 5. Use Cases
-// Single responsibility workflows
-// -------------------------------------------------------
+
+// ======================================================
+// AGENTS
+// ======================================================
+builder.Services.AddScoped<AgentRequestFactory>();
+builder.Services.AddScoped<IAgent, Security_Agent>();
+builder.Services.AddScoped<IAgent, CostAnalysis_Agent>();
+builder.Services.AddScoped<IAgent, UrlValidationAndEndpointGeneration_Agent>();
+builder.Services.AddScoped<IAgent, SecurityHeaders_Agent>();
+builder.Services.AddScoped<IAgent, LatencyPerformance_Agent>();
+builder.Services.AddScoped<IAgent, Metrics_Agent>();
+builder.Services.AddScoped<IAgent, CredentialCheck_Agent>();
+
+
+
+// ======================================================
+// USE CASES
+// ======================================================
+
 builder.Services.AddScoped<IngestLogUseCase>();
 builder.Services.AddScoped<GenerateMetricsUseCase>();
 
 
-// -------------------------------------------------------
-// 6. Background Queue Infrastructure
-// Singleton because shared in-memory state
-// -------------------------------------------------------
-builder.Services.AddSingleton<IEventQueue, InMemoryEventQueue>();
-builder.Services.AddSingleton<IMetricProcessor, MetricProcessor>();
 
+// ======================================================
+// BACKGROUND WORKER
+// ======================================================
 
-// -------------------------------------------------------
-// 7. Hosted Background Worker
-// Runs continuously after app startup
-// -------------------------------------------------------
 builder.Services.AddHostedService<LogProcessingWorker>();
 
+
+
+// ======================================================
+// BUILD APP
+// ======================================================
 
 var app = builder.Build();
 
 
-// =======================================================
+
+// ======================================================
 // HTTP PIPELINE
-// =======================================================
+// ======================================================
 
-
-// -------------------------------------------------------
-// Map controller endpoints
-// -------------------------------------------------------
 app.MapControllers();
 
-
-// -------------------------------------------------------
-// Start application
-// -------------------------------------------------------
 app.Run();

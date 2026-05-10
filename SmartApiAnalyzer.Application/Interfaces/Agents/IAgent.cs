@@ -1,6 +1,5 @@
-namespace SmartApiAnalyzer.Application.Services.Interface.Events;
+namespace SmartApiAnalyzer.Application.Services.Interface.Agents;
 
-using SmartApiAnalyzer.Domain.Entities;
 using SmartApiAnalyzer.Domain.Entities.Models;
 using SmartApiAnalyzer.Domain.Events;
 

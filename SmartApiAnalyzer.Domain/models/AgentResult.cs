@@ -15,7 +15,7 @@ public sealed class AgentResult
 
   public string Message { get; init; } = string.Empty;
 
-  public Dictionary<string, object>? Data { get; init; }
+  public Dictionary<string, object>? Data { get; set; }
 
   public DateTime CompletedAtUtc { get; init; } = DateTime.UtcNow;
 

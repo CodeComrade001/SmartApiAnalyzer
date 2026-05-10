@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using SmartApiAnalyzer.Application.Services.Interface.Events;
 using SmartApiAnalyzer.Domain.Events;
 

@@ -21,8 +21,6 @@ public class LogProcessingWorker : BackgroundService
     {
       var evt = await _queue.DequeueAsync(stoppingToken);
 
-      // compute metrics here
-
       await _notifier.NotifyAsync("New log received; processing started", evt);
     }
   }
