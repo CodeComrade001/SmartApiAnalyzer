@@ -1,17 +1,18 @@
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.DependencyInjection;
 using SmartApiAnalyzer.Application.Services.Interface.Events;
 
 public class LogProcessingWorker : BackgroundService
 {
   private readonly IEventQueue _queue;
-  private readonly IRealtimeNotifier _notifier;
+  private readonly IServiceScopeFactory _scopeFactory;
 
   public LogProcessingWorker(
       IEventQueue queue,
-      IRealtimeNotifier notifier)
+      IServiceScopeFactory scopeFactory)
   {
     _queue = queue;
-    _notifier = notifier;
+    _scopeFactory = scopeFactory;
   }
 
   protected override async Task ExecuteAsync(
@@ -21,7 +22,19 @@ public class LogProcessingWorker : BackgroundService
     {
       var evt = await _queue.DequeueAsync(stoppingToken);
 
-      await _notifier.NotifyAsync("New log received; processing started", evt);
+      using var scope = _scopeFactory.CreateScope();
+
+      var notifier =
+          scope.ServiceProvider.GetRequiredService<IRealtimeNotifier>();
+
+      var coordinator =
+          scope.ServiceProvider.GetRequiredService<ICoordinator>();
+
+      await notifier.NotifyAsync(
+          "New log received; processing started",
+          evt);
+
+      await coordinator.RunAsync(evt, stoppingToken);
     }
   }
 }

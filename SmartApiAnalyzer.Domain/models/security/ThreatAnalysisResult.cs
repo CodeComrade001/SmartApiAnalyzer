@@ -11,5 +11,5 @@ public sealed class ThreatAnalysisResult
 
   public string? Category { get; init; }
 
-  public string? Reason { get; init; }
+  public List<string>? Reason { get; init; }
 }

@@ -6,6 +6,7 @@ using SmartApiAnalyzer.Application.Services.Interface.Events;
 using SmartApiAnalyzer.Domain.Constants;
 using SmartApiAnalyzer.Domain.Models;
 using SmartApiAnalyzer.Domain.Events;
+using Infrastructure.Common;
 
 public class AgentCoordinator : ICoordinator
 {
@@ -31,6 +32,7 @@ public class AgentCoordinator : ICoordinator
         _registry.Get(
             AgentType.UrlValidationAndEndpoints
                 .ToSystemName());
+    AppLogger.Log("Starting URL validation and endpoint extraction...");
 
     var validationResult =
         await validation.ExecuteAsync(evt, ct);
@@ -41,7 +43,7 @@ public class AgentCoordinator : ICoordinator
 
     if (validationResult.StopProcessing)
       return;
-
+    AppLogger.Log("URL validation completed. Proceeding with selected agents...");
     await ExecuteAgentsAsync(evt, ct);
   }
 

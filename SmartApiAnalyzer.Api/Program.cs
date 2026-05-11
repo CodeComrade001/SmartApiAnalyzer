@@ -88,7 +88,7 @@ builder.Services.AddSingleton<IEventBus, InMemoryEventBus>();
 // REALTIME + AGENT INFRASTRUCTURE
 // ======================================================
 
-builder.Services.AddSingleton<IRealtimeNotifier, RealtimeNotifier>();
+builder.Services.AddScoped<IRealtimeNotifier, RealtimeNotifier>();
 builder.Services.AddScoped<IAgentRegistry, AgentRegistry>();
 builder.Services.AddScoped<ICoordinator, AgentCoordinator>();
 
@@ -171,7 +171,7 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment() || app.Environment.IsStaging())
 {
   app.UseSwagger();
   app.UseSwaggerUI();

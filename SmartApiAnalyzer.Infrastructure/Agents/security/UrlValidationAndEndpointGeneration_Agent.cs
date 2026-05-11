@@ -6,6 +6,7 @@ using SmartApiAnalyzer.Domain.Entities.Models;
 using SmartApiAnalyzer.Domain.Events;
 using SmartApiAnalyzer.Infrastructure.Agents.Factory;
 using SmartApiAnalyzer.Domain.Constants;
+using Infrastructure.Common;
 
 namespace SmartApiAnalyzer.Infrastructure.Agents;
 
@@ -74,7 +75,9 @@ public sealed class UrlValidationAndEndpointGeneration_Agent : IAgent
       }
 
       // Threat intelligence scan
+      AppLogger.Log("Threat scan starting...");
       var threatResult = await _threatIntel.AnalyzeAsync(uri, ct);
+      AppLogger.Log("Threat scan done.");
 
       if (threatResult.IsMalicious)
       {
@@ -85,8 +88,9 @@ public sealed class UrlValidationAndEndpointGeneration_Agent : IAgent
       }
 
       // Discover routes
-      var discovered =
-          await _endpointDiscovery.DiscoverAsync(uri, ct);
+      AppLogger.Log("Endpoint discovery starting...");
+      var discovered = await _endpointDiscovery.DiscoverAsync(uri, ct);
+      AppLogger.Log("Endpoint discovery done.");
 
       var routes = discovered
           .Where(x => !string.IsNullOrWhiteSpace(x))
