@@ -12,11 +12,11 @@ public sealed class LatencyPerformance_Agent : IAgent
 {
   private readonly ILatencyInspectionService _service;
 
-  // public LatencyPerformance_Agent(
-  //     ILatencyInspectionService service)
-  // {
-  //   _service = service;
-  // }
+  public LatencyPerformance_Agent(
+      ILatencyInspectionService service)
+  {
+    _service = service;
+  }
 
   public string Name => AgentType.LatencyPerformance.ToSystemName();
 

@@ -1,18 +1,19 @@
-using Application.UseCases.IngestLog;
 using FluentValidation;
+using Microsoft.OpenApi.Models;
 using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using SmartApiAnalyzer.Api.Validators;
 using SmartApiAnalyzer.Application.Services;
+using SmartApiAnalyzer.Application.Services.Agents;
+using SmartApiAnalyzer.Application.Services.Interface.Agent.Metric;
+using SmartApiAnalyzer.Application.Services.Interface.Agent.Security;
+using SmartApiAnalyzer.Application.Services.Interface.Agent.Web;
 using SmartApiAnalyzer.Application.Services.Interface.Agents;
 using SmartApiAnalyzer.Application.Services.Interface.ControllerServices;
 using SmartApiAnalyzer.Application.Services.Interface.Events;
 using SmartApiAnalyzer.Application.Services.Interface.RepositoriesInterface;
-using SmartApiAnalyzer.Application.UseCases.Metrics;
 using SmartApiAnalyzer.Infrastructure.Agents;
 using SmartApiAnalyzer.Infrastructure.Agents.Factory;
-using SmartApiAnalyzer.Infrastructure.Persistence;
 using SmartApiAnalyzer.Infrastructure.queue;
 using SmartApiAnalyzer.Infrastructure.Repositories;
 
@@ -62,6 +63,7 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
 builder.Services.AddScoped<ILogService, LogService>();
 builder.Services.AddScoped<IMetricsService, MetricsService>();
 builder.Services.AddScoped<ISubscriptionService, SUbscriptionService>();
+builder.Services.AddScoped<IMetricProcessor, MetricProcessor>();
 
 
 
@@ -105,13 +107,21 @@ builder.Services.AddScoped<IAgent, Metrics_Agent>();
 builder.Services.AddScoped<IAgent, CredentialCheck_Agent>();
 
 
+// ======================================================
+// AGENTS HELPER DI
+// ======================================================
+builder.Services.AddScoped<IAgentSelector, AgentSelector>();
+builder.Services.AddScoped<ICredentialExposureService, CredentialExposureService>();
+builder.Services.AddScoped<ILatencyInspectionService, LatencyInspectionService>();
+builder.Services.AddScoped<ISecurityHeaderInspectionService, SecurityHeaderInspectionService>();
+builder.Services.AddScoped<IThreatIntelService, ThreatIntelService>();
+builder.Services.AddScoped<IEndpointDiscoveryService, EndpointDiscoveryService>();
+
 
 // ======================================================
 // USE CASES
 // ======================================================
 
-builder.Services.AddScoped<IngestLogUseCase>();
-builder.Services.AddScoped<GenerateMetricsUseCase>();
 
 
 
@@ -121,7 +131,39 @@ builder.Services.AddScoped<GenerateMetricsUseCase>();
 
 builder.Services.AddHostedService<LogProcessingWorker>();
 
+// ======================================================
+// SWAGGER UI
+// ======================================================
+builder.Services.AddSwaggerGen(c =>
+{
+  c.SwaggerDoc("v1", new OpenApiInfo { Title = "sMART_API_ANALYZER API", Version = "v1" });
 
+  // 🔹 Add JWT support in Swagger
+  c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+  {
+    Name = "Authorization",
+    Type = SecuritySchemeType.ApiKey,
+    Scheme = "Bearer",
+    BearerFormat = "JWT",
+    In = ParameterLocation.Header,
+    Description = "Enter 'Bearer <your token>'"
+  });
+
+  c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            new string[] {}
+        }
+    });
+});
 
 // ======================================================
 // BUILD APP
@@ -129,7 +171,11 @@ builder.Services.AddHostedService<LogProcessingWorker>();
 
 var app = builder.Build();
 
-
+if (app.Environment.IsDevelopment())
+{
+  app.UseSwagger();
+  app.UseSwaggerUI();
+}
 
 // ======================================================
 // HTTP PIPELINE

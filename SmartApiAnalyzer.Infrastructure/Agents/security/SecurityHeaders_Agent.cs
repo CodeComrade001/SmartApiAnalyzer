@@ -12,11 +12,11 @@ public sealed class SecurityHeaders_Agent : IAgent
 {
   private readonly ISecurityHeaderInspectionService _service;
 
-  // public SecurityHeaders_Agent(
-  //     ISecurityHeaderInspectionService service)
-  // {
-  //   _service = service;
-  // }
+  public SecurityHeaders_Agent(
+      ISecurityHeaderInspectionService service)
+  {
+    _service = service;
+  }
 
   public string Name => AgentType.SecurityHeaders.ToSystemName();
 

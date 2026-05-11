@@ -25,13 +25,13 @@ public sealed class UrlValidationAndEndpointGeneration_Agent : IAgent
   private readonly IThreatIntelService _threatIntel;
   private readonly IEndpointDiscoveryService _endpointDiscovery;
 
-  // public UrlValidationAndEndpointGeneration_Agent(
-  //     IThreatIntelService threatIntel,
-  //     IEndpointDiscoveryService endpointDiscovery)
-  // {
-  //   _threatIntel = threatIntel;
-  //   _endpointDiscovery = endpointDiscovery;
-  // }
+  public UrlValidationAndEndpointGeneration_Agent(
+      IThreatIntelService threatIntel,
+      IEndpointDiscoveryService endpointDiscovery)
+  {
+    _threatIntel = threatIntel;
+    _endpointDiscovery = endpointDiscovery;
+  }
 
   public string Name => AgentType.UrlValidationAndEndpoints.ToSystemName();
 

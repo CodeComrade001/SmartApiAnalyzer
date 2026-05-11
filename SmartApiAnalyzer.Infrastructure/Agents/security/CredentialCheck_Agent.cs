@@ -11,11 +11,11 @@ public sealed class CredentialCheck_Agent : IAgent
 {
   private readonly ICredentialExposureService _credentialService;
 
-  // public CredentialCheck_Agent(
-  //     ICredentialExposureService credentialService)
-  // {
-  //   _credentialService = credentialService;
-  // }
+  public CredentialCheck_Agent(
+      ICredentialExposureService credentialService)
+  {
+    _credentialService = credentialService;
+  }
 
   public string Name => AgentType.CredentialCheck.ToSystemName();
 

@@ -1,5 +1,4 @@
 using SmartApiAnalyzer.Application.Services.Interface.Events;
-using SmartApiAnalyzer.Application.UseCases.Engine;
 using SmartApiAnalyzer.Domain.Events;
 
 namespace SmartApiAnalyzer.Application.Services;
