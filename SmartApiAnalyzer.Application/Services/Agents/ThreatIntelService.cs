@@ -1,15 +1,23 @@
-using SmartApiAnalyzer.Application.Services.Interface.Agent.Security;
-using SmartApiAnalyzer.Domain.Entities.Models;
+using Microsoft.Extensions.Logging;
+using SmartApiAnalyzer.Application.Services.Interface.Agents;
+using SmartApiAnalyzer.Domain.Entities.Models.Result.AgentServiceResults;
 using System.Net;
 using System.Net.Sockets;
 
-namespace SmartApiAnalyzer.Application.Services.Agents;
+namespace SmartApiAnalyzer.Infrastructure.Services;
 
 public class ThreatIntelService : IThreatIntelService
 {
+  private readonly ILogger<ThreatIntelService> _logger;
   private const int MALICIOUS_THRESHOLD = 70;
 
-  public async Task<ThreatAnalysisResult> AnalyzeAsync(Uri target, CancellationToken ct)
+  public ThreatIntelService(ILogger<ThreatIntelService> logger)
+  {
+    _logger = logger;
+  }
+
+
+  public async Task<ThreatIntelResult> EvaluateAsync(Uri target, CancellationToken ct)
   {
     ct.ThrowIfCancellationRequested();
 
@@ -67,11 +75,11 @@ public class ThreatIntelService : IThreatIntelService
     // 4. Final classification
     var isMalicious = score >= MALICIOUS_THRESHOLD;
 
-    return new ThreatAnalysisResult
+    return new ThreatIntelResult
     {
       IsMalicious = isMalicious,
-      Score = score,
-      Reason = reasons
+      ThreatScore = score,
+      // Reasons = reasons
     };
   }
 
@@ -100,4 +108,5 @@ public class ThreatIntelService : IThreatIntelService
       _ => false
     };
   }
+
 }

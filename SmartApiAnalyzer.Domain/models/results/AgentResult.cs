@@ -1,0 +1,213 @@
+
+namespace SmartApiAnalyzer.Domain.Entities.Models.Result.AgentServiceResults;
+
+public sealed class AgentResult
+{
+  public string AgentName { get; init; } = string.Empty;
+  public bool Success { get; init; }
+  public bool StopProcessing { get; init; }
+  public string Message { get; init; } = string.Empty;
+  public AgentSeverity Severity { get; init; }
+  public TimeSpan Elapsed { get; init; }
+  public IReadOnlyDictionary<string, object> Payload { get; init; }
+      = new Dictionary<string, object>();
+
+  // Factory helpers kept on the model itself for internal use.
+  // AgentRequestFactory (Infrastructure) calls these.
+  public static AgentResult CreateOk(
+      string agentName,
+      string message,
+      TimeSpan elapsed,
+      Dictionary<string, object>? payload = null) => new()
+      {
+        AgentName = agentName,
+        Success = true,
+        StopProcessing = false,
+        Message = message,
+        Severity = AgentSeverity.Info,
+        Elapsed = elapsed,
+        Payload = payload ?? new Dictionary<string, object>()
+      };
+
+  public static AgentResult CreateWarning(
+      string agentName,
+      string message,
+      TimeSpan elapsed,
+      Dictionary<string, object>? payload = null) => new()
+      {
+        AgentName = agentName,
+        Success = true,
+        StopProcessing = false,
+        Message = message,
+        Severity = AgentSeverity.Warning,
+        Elapsed = elapsed,
+        Payload = payload ?? new Dictionary<string, object>()
+      };
+
+  public static AgentResult CreateCriticalStop(
+      string agentName,
+      string message,
+      TimeSpan elapsed,
+      Dictionary<string, object>? payload = null) => new()
+      {
+        AgentName = agentName,
+        Success = false,
+        StopProcessing = true,
+        Message = message,
+        Severity = AgentSeverity.Critical,
+        Elapsed = elapsed,
+        Payload = payload ?? new Dictionary<string, object>()
+      };
+}
+
+
+
+// ── UrlValidation ─────────────────────────────────────────────────────────────
+
+public sealed class UrlValidationResult
+{
+  public bool IsValid { get; init; }
+  public bool IsHttps { get; init; }
+  public string Scheme { get; init; } = string.Empty;
+  public string Host { get; init; } = string.Empty;
+  public bool DnsResolvable { get; init; }
+  public string? ResolvedIp { get; init; }
+  public bool IsPrivateIp { get; init; }
+  public bool IsLoopback { get; init; }
+  public string? FailureReason { get; init; }
+}
+
+public sealed class EndpointDiscoveryResult
+{
+  public List<string> DiscoveredRoutes { get; init; } = new();
+  public List<string> AllowedMethods { get; init; } = new();
+  public string DiscoveryMethod { get; init; } = string.Empty; // OpenApi|Options|Probe|Heuristic
+  public bool OpenApiAvailable { get; init; }
+  public string? OpenApiUrl { get; init; }
+}
+
+public sealed class ThreatIntelResult
+{
+  public double ThreatScore { get; init; }
+  public bool IsMalicious { get; init; }
+  public bool SuspiciousHost { get; init; }
+  public bool DnsFailure { get; init; }
+  public bool IsPrivateOrLoopback { get; init; }
+  public bool IsUnencrypted { get; init; }
+  public string Summary { get; init; } = string.Empty;
+}
+
+// ── DomainHijack ─────────────────────────────────────────────────────────────
+
+public sealed class DomainHijackResult
+{
+  public bool IsVulnerable { get; init; }
+  public bool HasDanglingCname { get; init; }
+  public bool HasSubdomainTakeover { get; init; }
+  public bool NsLookupFailed { get; init; }
+  public string? CnameTarget { get; init; }
+  public string? VulnerableProvider { get; init; }
+  public List<string> DetectedSignals { get; init; } = new();
+  public string Summary { get; init; } = string.Empty;
+}
+
+// ── SslTls ───────────────────────────────────────────────────────────────────
+
+public sealed class SslTlsResult
+{
+  public bool IsValid { get; init; }
+  public bool IsTrusted { get; init; }
+  public string Subject { get; init; } = string.Empty;
+  public string Issuer { get; init; } = string.Empty;
+  public DateTime ExpiresAt { get; init; }
+  public int DaysUntilExpiry { get; init; }
+  public bool IsExpiringSoon { get; init; }  // < 30 days
+  public bool IsExpired { get; init; }
+  public string TlsVersion { get; init; } = string.Empty;
+  public bool SupportsHsts { get; init; }
+  public string? FailureReason { get; init; }
+  public bool IsCritical { get; init; }
+}
+
+// ── SecurityHeaders ───────────────────────────────────────────────────────────
+
+public sealed class SecurityHeadersResult
+{
+  public bool HasHsts { get; init; }
+  public bool HasCsp { get; init; }
+  public bool HasXFrameOptions { get; init; }
+  public bool HasXContentTypeOpts { get; init; }
+  public bool HasReferrerPolicy { get; init; }
+  public bool HasPermissionsPolicy { get; init; }
+  public bool HasXssProtection { get; init; }
+  public List<string> MissingHeaders { get; init; } = new();
+  public Dictionary<string, string> PresentHeaders { get; init; } = new();
+  public int Score { get; init; }  // 0-100
+  public string Grade { get; init; } = string.Empty;
+  public bool IsCritical { get; init; }
+}
+
+// ── CredentialExposure ────────────────────────────────────────────────────────
+
+public sealed class CredentialExposureResult
+{
+  public bool HasLoginForm { get; init; }
+  public bool UsesHttps { get; init; }
+  public bool CookieSecure { get; init; }
+  public bool CookieHttpOnly { get; init; }
+  public string CookieSameSite { get; init; } = string.Empty;
+  public List<string> MissingHeaders { get; init; } = new();
+  public bool ExposedSecretsFound { get; init; }
+  public List<string> ExposedSecretTypes { get; init; } = new();
+  public double RiskScore { get; init; }
+  public bool IsCriticalRisk { get; init; }
+}
+
+// ── CorsPolicy ────────────────────────────────────────────────────────────────
+
+public sealed class CorsPolicyResult
+{
+  public bool AllowsWildcardOrigin { get; init; }
+  public bool AllowsCredentials { get; init; }
+  public bool WildcardWithCredentials { get; init; }  // critical misconfiguration
+  public string AllowOriginHeader { get; init; } = string.Empty;
+  public string AllowMethodsHeader { get; init; } = string.Empty;
+  public string AllowHeadersHeader { get; init; } = string.Empty;
+  public bool ReflectsArbitraryOrigin { get; init; }
+  public bool IsMisconfigured { get; init; }
+  public string Summary { get; init; } = string.Empty;
+}
+
+// ── RedirectChain ─────────────────────────────────────────────────────────────
+
+public sealed class RedirectChainResult
+{
+  public List<RedirectHop> Hops { get; init; } = new();
+  public bool EnforcesHttps { get; init; }
+  public bool HasRedirectLoop { get; init; }
+  public bool LandsOnHttp { get; init; }
+  public int HopCount { get; init; }
+  public string FinalUrl { get; init; } = string.Empty;
+  public bool IsCritical { get; init; }
+}
+
+public sealed class RedirectHop
+{
+  public int Step { get; init; }
+  public string FromUrl { get; init; } = string.Empty;
+  public string ToUrl { get; init; } = string.Empty;
+  public int StatusCode { get; init; }
+}
+
+// ── LatencyInspection ────────────────────────────────────────────────────────
+
+public sealed class LatencyInspectionResult
+{
+  public double LatencyMs { get; init; }
+  public double TtfbMs { get; init; }
+  public int StatusCode { get; init; }
+  public string Grade { get; init; } = string.Empty;
+  public bool TimedOut { get; init; }
+}
+
+public enum AgentSeverity { Info, Warning, Critical }

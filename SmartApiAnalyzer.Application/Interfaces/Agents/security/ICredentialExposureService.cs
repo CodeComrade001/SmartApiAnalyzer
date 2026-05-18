@@ -1,9 +1,9 @@
-public interface ICredentialExposureService
-{
-  Task<CredentialExposureResult> AnalyzeAsync(
-      Uri uri,
-      CancellationToken ct);
-}
+// public interface ICredentialExposureService
+// {
+//   Task<CredentialExposureResult> AnalyzeAsync(
+//       Uri uri,
+//       CancellationToken ct);
+// }
 
 public sealed class CredentialExposureResult
 {
@@ -15,10 +15,11 @@ public sealed class CredentialExposureResult
   public bool CookieSameSite { get; set; }
 
   public bool ExposedSecretsFound { get; set; }
+  public List<string> ExposedSecretTypes { get; set; }
 
   public bool IsCriticalRisk { get; set; }
 
-  public int RiskScore { get; set; }
+  public double RiskScore { get; set; }
 
   public List<string> MissingHeaders { get; set; } = new();
 }
