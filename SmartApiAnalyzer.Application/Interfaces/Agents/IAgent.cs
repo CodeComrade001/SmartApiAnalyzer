@@ -1,6 +1,6 @@
 namespace SmartApiAnalyzer.Application.Services.Interface.Agents;
 
-using SmartApiAnalyzer.Domain.Entities.Models;
+using SmartApiAnalyzer.Domain.Entities.Models.Result.AgentServiceResults;
 using SmartApiAnalyzer.Domain.Events;
 
 public interface IAgent

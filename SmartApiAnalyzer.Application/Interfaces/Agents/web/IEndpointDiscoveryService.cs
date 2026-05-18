@@ -1,4 +1,4 @@
-namespace SmartApiAnalyzer.Application.Services.Interface.Agent.Web;
+// namespace SmartApiAnalyzer.Application.Services.Interface.Agent.Web;
 
 /// <summary>
 /// Discovers reachable endpoints for a domain.
@@ -8,9 +8,9 @@ namespace SmartApiAnalyzer.Application.Services.Interface.Agent.Web;
 /// /api/users
 /// /docs
 /// </summary>
-public interface IEndpointDiscoveryService
-{
-  Task<IReadOnlyCollection<string>> DiscoverAsync(
-      Uri baseUri,
-      CancellationToken ct);
-}
+// public interface IEndpointDiscoveryService
+// {
+//   Task<IReadOnlyCollection<string>> DiscoverAsync(
+//       Uri baseUri,
+//       CancellationToken ct);
+// }

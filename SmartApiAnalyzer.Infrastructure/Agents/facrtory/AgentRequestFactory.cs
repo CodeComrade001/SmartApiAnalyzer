@@ -1,63 +1,33 @@
 
 using SmartApiAnalyzer.Domain.Entities.Models;
+using SmartApiAnalyzer.Domain.Entities.Models.Result.AgentServiceResults;
 
 namespace SmartApiAnalyzer.Infrastructure.Agents.Factory;
 
-public sealed partial class AgentRequestFactory
+/// <summary>
+/// Central factory for constructing AgentResult instances.
+/// Infrastructure-only — never leak into Domain or Application.
+/// </summary>
+public static class AgentRequestFactory
 {
   public static AgentResult Ok(
       string agentName,
       string message,
-      TimeSpan duration,
-      Dictionary<string, object>? data = null)
-      => new()
-      {
-        AgentName = agentName,
-        Success = true,
-        Message = message,
-        Duration = duration,
-        Data = data,
-        Severity = AgentSeverity.Info
-      };
+      TimeSpan elapsed,
+      Dictionary<string, object>? payload = null)
+      => AgentResult.CreateOk(agentName, message, elapsed, payload);
 
   public static AgentResult Warning(
       string agentName,
       string message,
-      TimeSpan duration)
-      => new()
-      {
-        AgentName = agentName,
-        Success = true,
-        Message = message,
-        Duration = duration,
-        Severity = AgentSeverity.Warning
-      };
+      TimeSpan elapsed,
+      Dictionary<string, object>? payload = null)
+      => AgentResult.CreateWarning(agentName, message, elapsed, payload);
 
   public static AgentResult CriticalStop(
       string agentName,
       string message,
-      TimeSpan duration)
-      => new()
-      {
-        AgentName = agentName,
-        Success = false,
-        StopProcessing = true,
-        Message = message,
-        Duration = duration,
-        Severity = AgentSeverity.Critical
-      };
-
-  public static AgentResult Retry(
-      string agentName,
-      string message,
-      TimeSpan duration)
-      => new()
-      {
-        AgentName = agentName,
-        Success = false,
-        ShouldRetry = true,
-        Message = message,
-        Duration = duration,
-        Severity = AgentSeverity.Error
-      };
+      TimeSpan elapsed,
+      Dictionary<string, object>? payload = null)
+      => AgentResult.CreateCriticalStop(agentName, message, elapsed, payload);
 }

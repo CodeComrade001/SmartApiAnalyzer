@@ -1,124 +1,273 @@
 // =============================================
 // File: Infrastructure/Events/AgentCoordinator.cs
 // =============================================
+using System.Diagnostics;
+using Microsoft.Extensions.Logging;
 using SmartApiAnalyzer.Application.Services.Interface.Agents;
 using SmartApiAnalyzer.Application.Services.Interface.Events;
 using SmartApiAnalyzer.Domain.Constants;
-using SmartApiAnalyzer.Domain.Models;
+using SmartApiAnalyzer.Domain.Entities.Models.Result.AgentServiceResults;
 using SmartApiAnalyzer.Domain.Events;
-using Infrastructure.Common;
+using SmartApiAnalyzer.Domain.Models;
 
-public class AgentCoordinator : ICoordinator
+namespace SmartAPiAnalyzer.Infrastructure.Coordination;
+
+public sealed class AgentCoordinator : ICoordinator
 {
+  private readonly IAgentRegistry _registry;
   private readonly IAgentSelector _selector;
   private readonly IRealtimeNotifier _notifier;
-  private readonly IAgentRegistry _registry;
+  private readonly ILogger<AgentCoordinator> _logger;
+
+  // Per-agent wall-clock timeout. Prevents a single hanging service
+  // from stalling the entire pipeline indefinitely.
+  private static readonly TimeSpan AgentTimeout = TimeSpan.FromSeconds(30);
 
   public AgentCoordinator(
       IAgentRegistry registry,
       IAgentSelector selector,
-      IRealtimeNotifier notifier)
+      IRealtimeNotifier notifier,
+      ILogger<AgentCoordinator> logger)
   {
     _registry = registry;
     _selector = selector;
     _notifier = notifier;
+    _logger = logger;
   }
 
-  public async Task RunAsync(
-      LogIngestedEvent evt,
-      CancellationToken ct)
+  public async Task<PipelineResult> RunAsync(LogIngestedEvent evt, CancellationToken ct)
   {
-    var validation =
-        _registry.Get(
-            AgentType.UrlValidationAndEndpoints
-                .ToSystemName());
-    AppLogger.Log("Starting URL validation and endpoint extraction...");
+    ArgumentNullException.ThrowIfNull(evt);
 
-    var validationResult =
-        await validation.ExecuteAsync(evt, ct);
+    var results = new List<AgentResult>();
+    var pipeline = Stopwatch.StartNew();
 
-    await _notifier.NotifyAsync(
-        validationResult.Message,
-        evt);
+    _logger.LogInformation(
+        $"Pipeline starting for EventId={evt.EventId} TenantId={evt.TenantId} Endpoint={evt.Endpoint}",
+        evt.EventId, evt.TenantId, evt.Endpoint);
 
-    if (validationResult.StopProcessing)
-      return;
-    AppLogger.Log("URL validation completed. Proceeding with selected agents...");
-    await ExecuteAgentsAsync(evt, ct);
+    // ── Phase 1: Gatekeeper — always first, always exclusive ──────────
+    if (!_registry.TryGet(AgentType.UrlValidationAndEndpoints.ToSystemName(), out var gatekeeper)
+        || gatekeeper is null)
+    {
+      _logger.LogCritical("Gatekeeper agent is not registered. Pipeline aborted.");
+      return Halted(evt, results, pipeline.Elapsed, "Gatekeeper agent not registered.");
+    }
+
+    var gatekeeperResult = await ExecuteWithTimeoutAsync(gatekeeper, evt, ct);
+    results.Add(gatekeeperResult);
+    MergePayload(evt, gatekeeper.Name, gatekeeperResult);
+
+    await _notifier.NotifyAsync(gatekeeperResult.Message, evt, ct);
+
+    if (gatekeeperResult.StopProcessing)
+    {
+      _logger.LogWarning(
+          $"Pipeline halted by gatekeeper. Reason: {gatekeeperResult.Message}", gatekeeperResult.Message);
+
+      return Halted(evt, results, pipeline.Elapsed, gatekeeperResult.Message);
+    }
+
+    _logger.LogInformation("Gatekeeper passed. Executing downstream agents.");
+
+    // ── Phase 2: Downstream agents ────────────────────────────────────
+    var executionPlan = new[]
+{
+    // AgentType.EndpointDiscovery,
+    AgentType.SecurityHeaders,
+    AgentType.SslTlsCheck,
+    AgentType.CostAnalysis,
+    AgentType.Alert
+};
+
+    foreach (var type in executionPlan)
+    {
+      ct.ThrowIfCancellationRequested();
+
+      // Resolve agent from registry
+      if (!_registry.TryGet(type.ToSystemName(), out var agent)
+          || agent is null)
+      {
+        _logger.LogWarning("Agent {AgentType} is not registered.", type);
+
+        continue;
+      }
+
+      _logger.LogDebug("Starting agent: {AgentName}", agent.Name);
+
+      await _notifier.NotifyAsync($"{agent.Name} started.", evt, ct);
+
+      var result = await ExecuteWithTimeoutAsync(agent, evt, ct);
+
+      results.Add(result);
+
+      MergePayload(evt, agent.Name, result);
+
+      await _notifier.NotifyAsync(result.Message, evt, ct);
+
+      _logger.LogDebug(
+          "Agent {AgentName} completed in {Elapsed}ms. Stop={StopProcessing} Severity={Severity}",
+          agent.Name,
+          result.Elapsed.TotalMilliseconds,
+          result.StopProcessing,
+          result.Severity);
+
+      if (result.StopProcessing)
+      {
+        _logger.LogWarning(
+            "Pipeline short-circuited by agent {AgentName}. Reason: {Reason}",
+            agent.Name,
+            result.Message);
+
+        pipeline.Stop();
+
+        return new PipelineResult
+        {
+          EventId = evt.EventId,
+          TenantId = evt.TenantId,
+          Halted = true,
+          HaltReason = $"[{agent.Name}] {result.Message}",
+          AgentResults = results,
+          CompletedAt = DateTime.UtcNow,
+          TotalElapsed = pipeline.Elapsed,
+        };
+      }
+    }
+
+    pipeline.Stop();
+
+    _logger.LogInformation(
+        $"Pipeline completed for EventId={evt.EventId} in {pipeline.Elapsed.TotalMilliseconds}ms. Agents run: {results.Count}",
+        evt.EventId, pipeline.Elapsed.TotalMilliseconds, results.Count);
+
+    return new PipelineResult
+    {
+      EventId = evt.EventId,
+      TenantId = evt.TenantId,
+      Halted = false,
+      AgentResults = results,
+      CompletedAt = DateTime.UtcNow,
+      TotalElapsed = pipeline.Elapsed,
+    };
   }
 
-  public async Task ResumeAsync(
+  public async Task<PipelineResult> ResumeAsync(
       Guid sessionId,
       ApprovalRequest request,
       CancellationToken ct)
   {
-    try
+    ArgumentNullException.ThrowIfNull(request);
+
+    _logger.LogInformation(
+        $"Resuming session {sessionId} with {request.Routes.Count} approved route(s).",
+        sessionId, request.Routes.Count);
+
+    // ResumeAsync rehydrates a minimal event representing the approved continuation.
+    // The endpoint here is intentionally empty — resumed pipelines operate on
+    // ApprovedRoutes, not a raw URL. Downstream agents that require NormalizedUri
+    // must guard against a null NormalizedUri.
+    var evt = new LogIngestedEvent(
+        request.TenantId,
+        endpoint: string.Empty,
+        statusCode: 200,
+        responseTimeMs: 0,
+        timestamp: DateTime.UtcNow)
     {
-      var evt = new LogIngestedEvent(
-          request.TenantId,
-          string.Empty,
-          200,
-          0,
-          DateTime.UtcNow)
-      {
-        SessionId = sessionId,
-        ApprovedRoutes = request.Routes
-      };
+      SessionId = sessionId,
+      ApprovedRoutes = request.Routes.Select(r => r.Route).ToList(),
+    };
 
-      await _notifier.NotifyAsync(
-          $"User approved {request.Routes.Count} route(s). Resuming analysis.",
-          evt);
+    await _notifier.NotifyAsync(
+        $"Session {sessionId}: user approved {request.Routes.Count} route(s). Resuming.",
+        evt, ct);
 
-      await ExecuteAgentsAsync(evt, ct);
-    }
-    catch (Exception ex)
-    {
-      await _notifier.NotifyAsync(
-          $"Error resuming session {sessionId}: {ex.Message}",
-          null);
-
-      throw;
-    }
+    return await RunDownstreamOnlyAsync(evt, ct);
   }
 
-  private async Task<IEnumerable<IAgent>> ExecuteAgentsAsync(
-      LogIngestedEvent evt,
-      CancellationToken ct)
+  // ── Private helpers ────────────────────────────────────────────────────────
+
+  private async Task<PipelineResult> RunDownstreamOnlyAsync(
+      LogIngestedEvent evt, CancellationToken ct)
   {
+    var results = new List<AgentResult>();
+    var pipeline = Stopwatch.StartNew();
+
+    var agents = _selector.Select(evt, _registry.GetAll());
+
+    foreach (var agent in agents)
+    {
+      ct.ThrowIfCancellationRequested();
+
+      var result = await ExecuteWithTimeoutAsync(agent, evt, ct);
+      results.Add(result);
+      MergePayload(evt, agent.Name, result);
+
+      await _notifier.NotifyAsync(result.Message, evt, ct);
+
+      if (result.StopProcessing)
+      {
+        pipeline.Stop();
+        return Halted(evt, results, pipeline.Elapsed,
+            $"[{agent.Name}] {result.Message}");
+      }
+    }
+
+    pipeline.Stop();
+    return new PipelineResult
+    {
+      EventId = evt.EventId,
+      TenantId = evt.TenantId,
+      Halted = false,
+      AgentResults = results,
+      CompletedAt = DateTime.UtcNow,
+      TotalElapsed = pipeline.Elapsed,
+    };
+  }
+
+  private async Task<AgentResult> ExecuteWithTimeoutAsync(
+      IAgent agent, LogIngestedEvent evt, CancellationToken externalCt)
+  {
+    using var linked = CancellationTokenSource.CreateLinkedTokenSource(externalCt);
+    linked.CancelAfter(AgentTimeout);
+
+    var sw = Stopwatch.StartNew();
     try
     {
-      var selectedAgents =
-          _selector.Select(evt, _registry.GetAll())
-              .Where(x =>
-                  x.Name != AgentType.UrlValidationAndEndpoints.ToSystemName())
-              .ToList();
-
-      foreach (var agent in selectedAgents)
-      {
-        await _notifier.NotifyAsync(
-            $"{agent.Name} started",
-            evt);
-
-        var result =
-            await agent.ExecuteAsync(evt, ct);
-
-        await _notifier.NotifyAsync(
-            result.Message,
-            evt);
-
-        if (result.StopProcessing)
-          break;
-      }
-
-      return selectedAgents;
+      return await agent.ExecuteAsync(evt, linked.Token);
     }
-    catch (Exception ex)
+    catch (OperationCanceledException) when (!externalCt.IsCancellationRequested)
     {
-      await _notifier.NotifyAsync(
-          $"Error during agent execution: {ex.Message}",
-          evt);
+      // Per-agent timeout fired, not the pipeline's external token
+      sw.Stop();
+      _logger.LogWarning(
+          $"Agent {agent.Name} exceeded {AgentTimeout.TotalSeconds}s timeout and was cancelled.",
+          agent.Name, AgentTimeout.TotalSeconds);
 
-      return Enumerable.Empty<IAgent>();
+      return AgentResult.CreateWarning(
+          agent.Name,
+          $"Agent timed out after {AgentTimeout.TotalSeconds}s.",
+          sw.Elapsed);
     }
   }
+
+  private static void MergePayload(LogIngestedEvent evt, string agentName, AgentResult result)
+  {
+    if (result.Payload.Count > 0)
+      evt.AgentPayloads[agentName] = new Dictionary<string, object>(result.Payload);
+  }
+
+  private static PipelineResult Halted(
+      LogIngestedEvent evt,
+      List<AgentResult> results,
+      TimeSpan elapsed,
+      string reason) => new()
+      {
+        EventId = evt.EventId,
+        TenantId = evt.TenantId,
+        Halted = true,
+        HaltReason = reason,
+        AgentResults = results,
+        CompletedAt = DateTime.UtcNow,
+        TotalElapsed = elapsed,
+      };
 }

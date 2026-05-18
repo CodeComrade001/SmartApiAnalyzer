@@ -1,0 +1,68 @@
+using SmartApiAnalyzer.Domain.Entities.Models.Result.AgentServiceResults;
+
+namespace SmartApiAnalyzer.Application.Services.Interface.Agents;
+
+// ── 1. UrlValidationAndEndpoints ─────────────────────────────────────────────
+
+public interface IUrlValidationService
+{
+    Task<UrlValidationResult> ValidateAsync(Uri uri, CancellationToken ct);
+}
+
+public interface IEndpointDiscoveryService
+{
+    Task<EndpointDiscoveryResult> DiscoverAsync(Uri uri, CancellationToken ct);
+}
+
+public interface IThreatIntelService
+{
+    // Task<ThreatIntelResult> EvaluateAsync(Uri uri, CancellationToken ct);
+    Task<ThreatIntelResult> EvaluateAsync(Uri uri, CancellationToken ct);
+}
+
+// ── 2. DomainHijack ──────────────────────────────────────────────────────────
+
+public interface IDomainHijackService
+{
+    Task<DomainHijackResult> AnalyzeAsync(Uri uri, CancellationToken ct);
+}
+
+// ── 3. SslTlsCheck ───────────────────────────────────────────────────────────
+
+public interface ISslTlsCheckService
+{
+    Task<SslTlsResult> AnalyzeAsync(Uri uri, CancellationToken ct);
+}
+
+// ── 4. SecurityHeaders ───────────────────────────────────────────────────────
+
+public interface ISecurityHeadersService
+{
+    Task<SecurityHeadersResult> AnalyzeAsync(Uri uri, CancellationToken ct);
+}
+
+// ── 5. CredentialCheck ───────────────────────────────────────────────────────
+
+public interface ICredentialExposureService
+{
+    Task<CredentialExposureResult> AnalyzeAsync(Uri uri, CancellationToken ct);
+}
+
+// ── 6. CorsPolicy ────────────────────────────────────────────────────────────
+
+public interface ICorsPolicyService
+{
+    Task<CorsPolicyResult> AnalyzeAsync(Uri uri, CancellationToken ct);
+}
+
+// ── 7. RedirectChain ─────────────────────────────────────────────────────────
+
+public interface IRedirectChainService
+{
+    Task<RedirectChainResult> AnalyzeAsync(Uri uri, CancellationToken ct);
+}
+
+public interface ILatencyInspectionService
+{
+    Task<LatencyInspectionResult> AnalyzeAsync(Uri uri, CancellationToken ct);
+}
