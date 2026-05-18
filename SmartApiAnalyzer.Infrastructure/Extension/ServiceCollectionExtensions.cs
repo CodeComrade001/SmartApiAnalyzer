@@ -1,13 +1,11 @@
 using Microsoft.Extensions.DependencyInjection;
-using SmartApiAnalyzer.Application.Services.Interface.Agent.Metric;
 using SmartApiAnalyzer.Application.Services.Interface.Agents;
 using SmartApiAnalyzer.Application.Services.Interface.Events;
 using SmartApiAnalyzer.Application.Services.Agents;
 using SmartApiAnalyzer.Infrastructure.Agents;
 using SmartApiAnalyzer.Infrastructure.Agents.Registry;
-using SmartApiAnalyzer.Infrastructure.Agents.Selector;
-using SmartApiAnalyzer.Infrastructure.Events;
 using SmartApiAnalyzer.Infrastructure.Services;
+using SmartAPiAnalyzer.Infrastructure.Coordination;
 
 namespace SmartApiAnalyzer.Infrastructure.Extensions;
 
@@ -18,29 +16,29 @@ public static class ServiceCollectionExtensions
     {
         // ── Named HTTP clients ────────────────────────────────────────────────
         services.AddHttpClient("CredentialExposure", c => c.Timeout = TimeSpan.FromSeconds(15));
-        services.AddHttpClient("LatencyInspection",  c => c.Timeout = TimeSpan.FromSeconds(15));
-        services.AddHttpClient("SecurityHeaders",    c => c.Timeout = TimeSpan.FromSeconds(10));
-        services.AddHttpClient("DomainHijack",       c => c.Timeout = TimeSpan.FromSeconds(10));
-        services.AddHttpClient("CorsPolicy",         c => c.Timeout = TimeSpan.FromSeconds(10));
-        services.AddHttpClient("RedirectChain",      c => c.Timeout = TimeSpan.FromSeconds(20))
+        services.AddHttpClient("LatencyInspection", c => c.Timeout = TimeSpan.FromSeconds(15));
+        services.AddHttpClient("SecurityHeaders", c => c.Timeout = TimeSpan.FromSeconds(10));
+        services.AddHttpClient("DomainHijack", c => c.Timeout = TimeSpan.FromSeconds(10));
+        services.AddHttpClient("CorsPolicy", c => c.Timeout = TimeSpan.FromSeconds(10));
+        services.AddHttpClient("RedirectChain", c => c.Timeout = TimeSpan.FromSeconds(20))
             .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
             {
-                AllowAutoRedirect    = false, // RedirectChainService follows manually
+                AllowAutoRedirect = false, // RedirectChainService follows manually
                 MaxConnectionsPerServer = 2
             });
 
         // ── Analysis services ─────────────────────────────────────────────────
         // Application-layer services (user's original placement preserved)
         services.AddScoped<ICredentialExposureService, CredentialExposureService>();
-        services.AddScoped<ILatencyInspectionService,  LatencyInspectionService>();
+        services.AddScoped<ILatencyInspectionService, LatencyInspectionService>();
 
         // Infrastructure-layer services
         services.AddScoped<ISecurityHeadersService, SecurityHeadersService>();
-        services.AddScoped<IDomainHijackService,    DomainHijackService>();
-        services.AddScoped<ICorsPolicyService,      CorsPolicyService>();
-        services.AddScoped<IRedirectChainService,   RedirectChainService>();
-        services.AddScoped<ISslTlsService,          SslTlsService>();
-        services.AddScoped<IAlertDispatchService,   AlertDispatchService>();
+        services.AddScoped<IDomainHijackService, DomainHijackService>();
+        services.AddScoped<ICorsPolicyService, CorsPolicyService>();
+        services.AddScoped<IRedirectChainService, RedirectChainService>();
+        services.AddScoped<ISslTlsCheckService, SslTlsCheckService>();
+        services.AddScoped<IAlertDispatchService, AlertDispatchService>();
 
         // ── Agent pipeline ────────────────────────────────────────────────────
         // Registration order is irrelevant — AgentRegistry sorts by Priority.
@@ -62,7 +60,7 @@ public static class ServiceCollectionExtensions
             new AgentRegistry(sp.GetServices<IAgent>()));
 
         services.AddScoped<IAgentSelector, AgentSelector>();
-        services.AddScoped<ICoordinator,   AgentCoordinator>();
+        services.AddScoped<ICoordinator, AgentCoordinator>();
 
         return services;
     }

@@ -13,10 +13,10 @@ public sealed class SslTlsCheckService : ISslTlsCheckService
 
     public SslTlsCheckService(ILogger<SslTlsCheckService> logger) => _logger = logger;
 
-    public async Task<SslTlsResult> AnalyzeAsync(Uri uri, CancellationToken ct)
+    public async Task<SslTlsCheckResult> AnalyzeAsync(Uri uri, CancellationToken ct)
     {
         if (uri.Scheme != "https")
-            return new SslTlsResult { IsValid = false, IsCritical = true, FailureReason = "Not HTTPS." };
+            return new SslTlsCheckResult { IsValid = false, IsCritical = true, FailureReason = "Not HTTPS." };
 
         X509Certificate2? cert = null;
         SslProtocols tlsVersion = SslProtocols.None;
@@ -56,7 +56,7 @@ public sealed class SslTlsCheckService : ISslTlsCheckService
             tlsVersion = SslProtocols.Tls13; // Conservative assumption; override via DI if needed.
 
             if (cert is null)
-                return new SslTlsResult
+                return new SslTlsCheckResult
                 {
                     IsValid = false,
                     IsCritical = true,
@@ -71,7 +71,7 @@ public sealed class SslTlsCheckService : ISslTlsCheckService
 
             var isCritical = isExpired || !isTrusted;
 
-            return new SslTlsResult
+            return new SslTlsCheckResult
             {
                 IsValid = !isExpired && isTrusted,
                 IsTrusted = isTrusted,
@@ -94,7 +94,7 @@ public sealed class SslTlsCheckService : ISslTlsCheckService
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _logger.LogWarning(ex, "SSL/TLS probe failed for {Host}", uri.Host);
-            return new SslTlsResult
+            return new SslTlsCheckResult
             {
                 IsValid = false,
                 IsCritical = true,

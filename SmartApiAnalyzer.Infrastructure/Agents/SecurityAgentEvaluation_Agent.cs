@@ -1,6 +1,8 @@
 using System.Diagnostics;
+using SmartApiAnalyzer.Application.Services.Interface.Agents;
 using SmartApiAnalyzer.Domain.Constants;
 using SmartApiAnalyzer.Domain.Entities.Models;
+using SmartApiAnalyzer.Domain.Entities.Models.Result.AgentServiceResults;
 using SmartApiAnalyzer.Domain.Events;
 using SmartApiAnalyzer.Infrastructure.Agents.Factory;
 
@@ -13,8 +15,8 @@ namespace SmartApiAnalyzer.Infrastructure.Agents;
 /// </summary>
 public sealed class SecurityAgentEvaluation_Agent : IAgent
 {
-    public string Name     => AgentType.SecurityAgentEvaluation.ToSystemName();
-    public int    Priority => 11;
+    public string Name => AgentType.SecurityAgentEvaluation.ToSystemName();
+    public int Priority => 11;
 
     public Task<AgentResult> ExecuteAsync(LogIngestedEvent evt, CancellationToken ct)
     {
@@ -32,10 +34,10 @@ public sealed class SecurityAgentEvaluation_Agent : IAgent
                     Name, "No prior agent results to evaluate.", sw.Elapsed));
             }
 
-            double accumulated  = 0;
-            int criticalCount   = 0;
-            int warningCount    = 0;
-            var synthesized     = new List<string>();
+            double accumulated = 0;
+            int criticalCount = 0;
+            int warningCount = 0;
+            var synthesized = new List<string>();
 
             foreach (var r in results)
             {
@@ -66,7 +68,7 @@ public sealed class SecurityAgentEvaluation_Agent : IAgent
                 < 40 => "B",
                 < 60 => "C",
                 < 80 => "D",
-                _    => "F"
+                _ => "F"
             };
 
             var posture = finalScore switch
@@ -75,18 +77,18 @@ public sealed class SecurityAgentEvaluation_Agent : IAgent
                 < 40 => "Acceptable",
                 < 60 => "Needs Attention",
                 < 80 => "Poor",
-                _    => "Critical Risk"
+                _ => "Critical Risk"
             };
 
             var payload = new Dictionary<string, object>
             {
-                ["OverallRiskScore"]       = Math.Round(finalScore, 2),
-                ["SecurityGrade"]          = grade,
-                ["SecurityPosture"]        = posture,
-                ["CriticalIssues"]         = criticalCount,
-                ["Warnings"]               = warningCount,
-                ["TotalAgentsEvaluated"]   = results.Count,
-                ["SynthesizedFindings"]    = synthesized
+                ["OverallRiskScore"] = Math.Round(finalScore, 2),
+                ["SecurityGrade"] = grade,
+                ["SecurityPosture"] = posture,
+                ["CriticalIssues"] = criticalCount,
+                ["Warnings"] = warningCount,
+                ["TotalAgentsEvaluated"] = results.Count,
+                ["SynthesizedFindings"] = synthesized
             };
 
             return Task.FromResult(AgentRequestFactory.Ok(

@@ -7,6 +7,7 @@ using SmartApiAnalyzer.Domain.Events;
 using SmartApiAnalyzer.Infrastructure.Agents.Factory;
 using SmartApiAnalyzer.Domain.Constants;
 using Infrastructure.Common;
+using SmartApiAnalyzer.Domain.Entities.Models.Result.AgentServiceResults;
 
 namespace SmartApiAnalyzer.Infrastructure.Agents;
 

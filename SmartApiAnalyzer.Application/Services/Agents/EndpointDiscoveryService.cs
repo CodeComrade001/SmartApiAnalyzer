@@ -309,7 +309,7 @@ public sealed class EndpointDiscoveryService : IEndpointDiscoveryService
       {
         foreach (var m in response.Content.Headers.Allow)
         {
-          methods.Add(m.Method);
+          methods.Add(m);
         }
       }
     }
