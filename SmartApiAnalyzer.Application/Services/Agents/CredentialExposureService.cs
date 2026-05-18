@@ -106,7 +106,7 @@ public sealed class CredentialExposureService : ICredentialExposureService
                 UsesHttps           = uri.Scheme == "https",
                 CookieSecure        = cookieSecure,
                 CookieHttpOnly      = cookieHttpOnly,
-                CookieSameSite      = cookieSameSite,
+                CookieSameSite      = !string.Equals(cookieSameSite, "None", StringComparison.OrdinalIgnoreCase),
                 MissingHeaders      = missingHeaders,
                 ExposedSecretsFound = exposedSecretsFound,
                 ExposedSecretTypes  = exposedTypes,

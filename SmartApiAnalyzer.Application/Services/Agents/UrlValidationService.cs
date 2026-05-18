@@ -1,9 +1,7 @@
 using System.Net;
 using System.Net.Sockets;
-using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using SmartApiAnalyzer.Application.Services.Interface.Agents;
-using SmartApiAnalyzer.Application.Services.Interface.Agent.Web;
 using SmartApiAnalyzer.Domain.Entities.Models.Result.AgentServiceResults;
 
 namespace SmartApiAnalyzer.Infrastructure.Services;

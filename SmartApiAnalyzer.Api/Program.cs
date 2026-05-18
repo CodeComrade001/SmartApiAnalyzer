@@ -3,22 +3,8 @@ using Microsoft.OpenApi.Models;
 using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Mvc;
 using SmartApiAnalyzer.Api.Validators;
-using SmartApiAnalyzer.Application.Services;
-using SmartApiAnalyzer.Application.Services.Agents;
-using SmartApiAnalyzer.Application.Services.Interface.Agent.Metric;
-using SmartApiAnalyzer.Application.Services.Interface.Agent.Security;
-using SmartApiAnalyzer.Application.Services.Interface.Agent.Web;
-using SmartApiAnalyzer.Application.Services.Interface.Agents;
-using SmartApiAnalyzer.Application.Services.Interface.ControllerServices;
-using SmartApiAnalyzer.Application.Services.Interface.Events;
-using SmartApiAnalyzer.Application.Services.Interface.RepositoriesInterface;
 using SmartApiAnalyzer.Application.DependencyInjection;
 using SmartApiAnalyzer.Infrastructure.DependencyInjection;
-// using SmartApiAnalyzer.Infrastructure.Agents;
-// using SmartApiAnalyzer.Infrastructure.Agents.Factory;
-// using SmartApiAnalyzer.Infrastructure.queue;
-// using SmartApiAnalyzer.Infrastructure.Repositories;
-// using SmartAPiAnalyzer.Infrastructure.Coordination;
 
 var builder = WebApplication.CreateBuilder(args);
 

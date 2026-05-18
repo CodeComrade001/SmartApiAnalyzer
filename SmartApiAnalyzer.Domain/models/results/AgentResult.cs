@@ -111,9 +111,9 @@ public sealed class DomainHijackResult
   public string Summary { get; init; } = string.Empty;
 }
 
-// ── SslTls ───────────────────────────────────────────────────────────────────
+//  ── SslTlsCheck ───────────────────────────────────────────────────────────────────
 
-public sealed class SslTlsResult
+public sealed class SslTlsCheckResult
 {
   public bool IsValid { get; init; }
   public bool IsTrusted { get; init; }
@@ -128,6 +128,7 @@ public sealed class SslTlsResult
   public string? FailureReason { get; init; }
   public bool IsCritical { get; init; }
 }
+
 
 // ── SecurityHeaders ───────────────────────────────────────────────────────────
 
@@ -209,5 +210,30 @@ public sealed class LatencyInspectionResult
   public string Grade { get; init; } = string.Empty;
   public bool TimedOut { get; init; }
 }
+
+// ── AlertDispatchRequest ────────────────────────────────────────────────────────
+
+public sealed class AlertDispatchResult
+{
+  public bool Success { get; init; }
+
+  public int TotalAlertsProcessed { get; init; }
+
+  public int SuccessfulDispatches { get; init; }
+
+  public int FailedDispatches { get; init; }
+
+  public bool RequiresRetry { get; init; }
+
+  public TimeSpan Elapsed { get; init; }
+
+  public IReadOnlyList<string> Errors { get; init; }
+      = Array.Empty<string>();
+
+  public DateTime CompletedAtUtc { get; init; }
+      = DateTime.UtcNow;
+}
+
+// ── Agent severity levels ─────────────────────────────────────────────────
 
 public enum AgentSeverity { Info, Warning, Critical }

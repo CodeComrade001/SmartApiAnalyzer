@@ -71,56 +71,32 @@ public sealed class AgentCoordinator : ICoordinator
     _logger.LogInformation("Gatekeeper passed. Executing downstream agents.");
 
     // ── Phase 2: Downstream agents ────────────────────────────────────
-    var executionPlan = new[]
-{
-    // AgentType.EndpointDiscovery,
-    AgentType.SecurityHeaders,
-    AgentType.SslTlsCheck,
-    AgentType.CostAnalysis,
-    AgentType.Alert
-};
+    var agents = _selector.Select(evt, _registry.GetAll());
 
-    foreach (var type in executionPlan)
+    foreach (var agent in agents)
     {
       ct.ThrowIfCancellationRequested();
 
-      // Resolve agent from registry
-      if (!_registry.TryGet(type.ToSystemName(), out var agent)
-          || agent is null)
-      {
-        _logger.LogWarning("Agent {AgentType} is not registered.", type);
-
-        continue;
-      }
-
-      _logger.LogDebug("Starting agent: {AgentName}", agent.Name);
-
+      _logger.LogDebug($"Starting agent: {agent.Name}", agent.Name);
       await _notifier.NotifyAsync($"{agent.Name} started.", evt, ct);
 
       var result = await ExecuteWithTimeoutAsync(agent, evt, ct);
-
       results.Add(result);
-
       MergePayload(evt, agent.Name, result);
 
       await _notifier.NotifyAsync(result.Message, evt, ct);
 
       _logger.LogDebug(
-          "Agent {AgentName} completed in {Elapsed}ms. Stop={StopProcessing} Severity={Severity}",
-          agent.Name,
-          result.Elapsed.TotalMilliseconds,
-          result.StopProcessing,
-          result.Severity);
+          $"Agent {agent.Name} completed in {result.Elapsed.TotalMilliseconds}ms. Stop={result.StopProcessing} Severity={result.Severity}",
+          agent.Name, result.Elapsed.TotalMilliseconds, result.StopProcessing, result.Severity);
 
       if (result.StopProcessing)
       {
         _logger.LogWarning(
-            "Pipeline short-circuited by agent {AgentName}. Reason: {Reason}",
-            agent.Name,
-            result.Message);
+            $"Pipeline short-circuited by agent {agent.Name}. Reason: {result.Message}",
+            agent.Name, result.Message);
 
         pipeline.Stop();
-
         return new PipelineResult
         {
           EventId = evt.EventId,

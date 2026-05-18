@@ -31,7 +31,7 @@ public interface IDomainHijackService
 
 public interface ISslTlsCheckService
 {
-    Task<SslTlsResult> AnalyzeAsync(Uri uri, CancellationToken ct);
+    Task<SslTlsCheckResult> AnalyzeAsync(Uri uri, CancellationToken ct);
 }
 
 // ── 4. SecurityHeaders ───────────────────────────────────────────────────────
@@ -65,4 +65,11 @@ public interface IRedirectChainService
 public interface ILatencyInspectionService
 {
     Task<LatencyInspectionResult> AnalyzeAsync(Uri uri, CancellationToken ct);
+}
+
+// ─ 20. AlertDispatch ─────────────────────────────────────────────────────────
+
+public interface IAlertDispatchService
+{
+    Task<AlertDispatchResult> DispatchAsync(string tenantId, Guid sessionId, IReadOnlyList<AgentResult> criticalResults, CancellationToken ct);
 }
