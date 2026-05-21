@@ -1,7 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using SmartApiAnalyzer.Application.Services;
 using SmartApiAnalyzer.Application.Services.Agents;
-using SmartApiAnalyzer.Application.Services.Interface.Agent.Security;
 using SmartApiAnalyzer.Application.Services.Interface.Agents;
 using SmartApiAnalyzer.Application.Services.Interface.ControllerServices;
 using SmartApiAnalyzer.Application.Services.Interface.Events;
@@ -32,9 +31,15 @@ public static class ApplicationServiceRegistration
         services.AddScoped<IAgentSelector, AgentSelector>();
         services.AddScoped<ICredentialExposureService, CredentialExposureService>();
         services.AddScoped<ILatencyInspectionService, LatencyInspectionService>();
-        services.AddScoped<ISecurityHeaderInspectionService, SecurityHeaderInspectionService>();
         services.AddScoped<IThreatIntelService, ThreatIntelService>();
         services.AddScoped<IEndpointDiscoveryService, EndpointDiscoveryService>();
+        services.AddScoped<ISecurityHeaderService, SecurityHeadersService>();
+        services.AddScoped<IAlertDispatchService, AlertDispatchService>();
+        services.AddScoped<ICorsPolicyService, CorsPolicyService>();
+        services.AddScoped<IRedirectChainService, RedirectChainService>();
+        services.AddScoped<IDomainHijackService, DomainHijackService>();
+        services.AddScoped<ISslTlsCheckService, SslTlsCheckService>();
+        services.AddScoped<IUrlValidationService, UrlValidationService>();
 
         // ======================================================
         // USE CASES

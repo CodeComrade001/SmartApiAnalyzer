@@ -1,26 +1,49 @@
+using System.Collections.Frozen;
 using SmartApiAnalyzer.Application.Services.Interface.Agents;
-namespace SmartApiAnalyzer.Infrastructure.Agents.Factory;
 
-public class AgentRegistry : IAgentRegistry
+namespace SmartApiAnalyzer.Infrastructure.Agents.Registry;
+
+/// <summary>
+/// Immutable, thread-safe registry populated at startup.
+/// Agents are keyed by their canonical system name.
+/// </summary>
+public sealed class AgentRegistry : IAgentRegistry
 {
-  private readonly Dictionary<string, IAgent> _agents;
+    private readonly FrozenDictionary<string, IAgent> _agents;
+    private readonly IReadOnlyList<IAgent> _ordered;
 
-  public AgentRegistry(IEnumerable<IAgent> agents)
-  {
-    _agents = agents.ToDictionary(
-        a => a.Name,
-        a => a,
-        StringComparer.OrdinalIgnoreCase);
-  }
+    public AgentRegistry(IEnumerable<IAgent> agents)
+    {
+        var list = agents
+            .OrderBy(a => a.Priority)
+            .ToList();
 
-  public IAgent Get(string agentName)
-  {
-    if (_agents.TryGetValue(agentName, out var agent))
-      return agent;
+        // Fail fast at startup if any name collision exists
+        var dict = new Dictionary<string, IAgent>(StringComparer.Ordinal);
+        foreach (var agent in list)
+        {
+            if (!dict.TryAdd(agent.Name, agent))
+                throw new InvalidOperationException(
+                    $"Duplicate agent name detected: '{agent.Name}'. Each agent must have a unique Name.");
+        }
 
-    throw new KeyNotFoundException($"Agent '{agentName}' not found.");
-  }
+        _agents = dict.ToFrozenDictionary(StringComparer.Ordinal);
+        _ordered = list.AsReadOnly();
+    }
 
-  public IReadOnlyCollection<IAgent> GetAll()
-      => _agents.Values.ToList();
+    public IAgent Get(string name)
+    {
+        if (_agents.TryGetValue(name, out var agent))
+            return agent;
+
+        throw new KeyNotFoundException(
+            $"No agent registered with name '{name}'.");
+    }
+
+    public bool TryGet(string name, out IAgent? agent)
+        => _agents.TryGetValue(name, out agent);
+
+
+    public IReadOnlyCollection<IAgent> GetAll()
+     => _ordered;
 }

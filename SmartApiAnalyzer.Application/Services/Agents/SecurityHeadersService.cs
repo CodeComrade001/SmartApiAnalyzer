@@ -4,7 +4,7 @@ using SmartApiAnalyzer.Domain.Entities.Models.Result.AgentServiceResults;
 
 namespace SmartApiAnalyzer.Infrastructure.Services;
 
-public sealed class SecurityHeadersService : ISecurityHeadersService
+public sealed class SecurityHeadersService : ISecurityHeaderService
 {
     private readonly HttpClient _http;
     private readonly ILogger<SecurityHeadersService> _logger;

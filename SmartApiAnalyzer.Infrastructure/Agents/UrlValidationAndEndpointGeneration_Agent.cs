@@ -1,8 +1,5 @@
 using System.Diagnostics;
-using SmartApiAnalyzer.Application.Services.Interface.Agent.Security;
 using SmartApiAnalyzer.Application.Services.Interface.Agents;
-using SmartApiAnalyzer.Application.Services.Interface.Agent.Web;
-using SmartApiAnalyzer.Domain.Entities.Models;
 using SmartApiAnalyzer.Domain.Events;
 using SmartApiAnalyzer.Infrastructure.Agents.Factory;
 using SmartApiAnalyzer.Domain.Constants;
@@ -77,7 +74,7 @@ public sealed class UrlValidationAndEndpointGeneration_Agent : IAgent
 
       // Threat intelligence scan
       AppLogger.Log("Threat scan starting...");
-      var threatResult = await _threatIntel.AnalyzeAsync(uri, ct);
+      var threatResult = await _threatIntel.EvaluateAsync(uri, ct);
       AppLogger.Log("Threat scan done.");
 
       if (threatResult.IsMalicious)
@@ -93,8 +90,8 @@ public sealed class UrlValidationAndEndpointGeneration_Agent : IAgent
       var discovered = await _endpointDiscovery.DiscoverAsync(uri, ct);
       AppLogger.Log("Endpoint discovery done.");
 
-      var routes = discovered
-          .Where(x => !string.IsNullOrWhiteSpace(x))
+      var routes = discovered.DiscoveredRoutes
+          .Where((string x) => !string.IsNullOrWhiteSpace(x))
           .Select(NormalizeEndpoint)
           .Distinct(StringComparer.OrdinalIgnoreCase)
           .OrderBy(x => x)

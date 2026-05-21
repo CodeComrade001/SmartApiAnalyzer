@@ -48,74 +48,7 @@ builder.Services
     .AddApplicationLayer()
     .AddInfrastructureLayer(builder.Configuration);
 
-
-// ======================================================
-// APPLICATION SERVICES
-// ======================================================
-
-// builder.Services.AddScoped<ILogService, LogService>();
-// builder.Services.AddScoped<IMetricsService, MetricsService>();
-// builder.Services.AddScoped<ISubscriptionService, SUbscriptionService>();
-// builder.Services.AddScoped<IMetricProcessor, MetricProcessor>();
-
-
-
-// ======================================================
-// REPOSITORIES
-// ======================================================
-
-// builder.Services.AddScoped<ILogRepository, LogRepository>();
-
-
-
-// ======================================================
-// EVENT SYSTEM
-// ======================================================
-
-// builder.Services.AddSingleton<IEventQueue, InMemoryEventQueue>();
-// builder.Services.AddSingleton<IEventBus, InMemoryEventBus>();
-
-
-
-// ======================================================
-// REALTIME + AGENT INFRASTRUCTURE
-// ======================================================
-
-// builder.Services.AddScoped<IRealtimeNotifier, RealtimeNotifier>();
-// builder.Services.AddScoped<IAgentRegistry, AgentRegistry>();
-// builder.Services.AddScoped<ICoordinator, AgentCoordinator>();
-
-
-
-// ======================================================
-// AGENTS
-// ======================================================
-// builder.Services.AddScoped<AgentRequestFactory>();
-// builder.Services.AddScoped<IAgent, Security_Agent>();
-// builder.Services.AddScoped<IAgent, CostAnalysis_Agent>();
-// builder.Services.AddScoped<IAgent, UrlValidationAndEndpointGeneration_Agent>();
-// builder.Services.AddScoped<IAgent, SecurityHeaders_Agent>();
-// builder.Services.AddScoped<IAgent, LatencyPerformance_Agent>();
-// builder.Services.AddScoped<IAgent, Metrics_Agent>();
-// builder.Services.AddScoped<IAgent, CredentialCheck_Agent>();
-
-
-// ======================================================
-// AGENTS HELPER DI
-// ======================================================
-// builder.Services.AddScoped<IAgentSelector, AgentSelector>();
-// builder.Services.AddScoped<ICredentialExposureService, CredentialExposureService>();
-// builder.Services.AddScoped<ILatencyInspectionService, LatencyInspectionService>();
-// builder.Services.AddScoped<ISecurityHeaderInspectionService, SecurityHeaderInspectionService>();
-// builder.Services.AddScoped<IThreatIntelService, ThreatIntelService>();
-// builder.Services.AddScoped<IEndpointDiscoveryService, EndpointDiscoveryService>();
-
-
-// ======================================================
-// USE CASES
-// ======================================================
-
-
+// builder.Services.AddScoped<ServiceCollectionExtensions>()
 
 
 // ======================================================

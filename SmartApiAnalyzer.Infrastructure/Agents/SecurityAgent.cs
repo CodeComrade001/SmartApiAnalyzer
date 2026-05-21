@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using SmartApiAnalyzer.Application.Services.Interface.Agents;
 using SmartApiAnalyzer.Domain.Constants;
-using SmartApiAnalyzer.Domain.Entities.Models;
+using SmartApiAnalyzer.Domain.Entities.Models.Result.AgentServiceResults;
 using SmartApiAnalyzer.Domain.Events;
 using SmartApiAnalyzer.Infrastructure.Agents.Factory;
 
