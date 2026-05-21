@@ -10,14 +10,14 @@ using SmartApiAnalyzer.Infrastructure.Agents.Factory;
 
 public sealed class SecurityHeaders_Agent : IAgent
 {
-    private readonly ISecurityHeadersService _service;
+    private readonly ISecurityHeaderService _service;
     private readonly ILogger<SecurityHeaders_Agent> _logger;
 
     public string Name => AgentType.SecurityHeaders.ToSystemName();
     public int Priority => (int)AgentType.SecurityHeaders;
 
     public SecurityHeaders_Agent(
-        ISecurityHeadersService service,
+        ISecurityHeaderService service,
         ILogger<SecurityHeaders_Agent> logger)
     {
         _service = service;

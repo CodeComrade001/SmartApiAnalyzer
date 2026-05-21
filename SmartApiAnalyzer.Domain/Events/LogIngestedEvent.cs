@@ -1,3 +1,5 @@
+using SmartApiAnalyzer.Domain.Entities.Models.Result.AgentServiceResults;
+
 namespace SmartApiAnalyzer.Domain.Events;
 
 public sealed class LogIngestedEvent
@@ -35,4 +37,6 @@ public sealed class LogIngestedEvent
         ResponseTimeMs = responseTimeMs;
         Timestamp = timestamp;
     }
+
+    public List<AgentResult> AgentResults { get; init; } = new();
 }

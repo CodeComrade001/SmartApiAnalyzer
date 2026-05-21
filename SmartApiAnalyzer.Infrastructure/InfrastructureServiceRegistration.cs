@@ -3,7 +3,6 @@ using Microsoft.Extensions.DependencyInjection;
 using SmartApiAnalyzer.Application.Services;
 
 using SmartApiAnalyzer.Application.Services.Agents;
-using SmartApiAnalyzer.Application.Services.Interface.Agent.Security;
 using SmartApiAnalyzer.Application.Services.Interface.Agents;
 
 using SmartApiAnalyzer.Application.Services.Interface.Events;
@@ -12,6 +11,7 @@ using SmartApiAnalyzer.Application.Services.Interface.RepositoriesInterface;
 
 using SmartApiAnalyzer.Infrastructure.Agents;
 using SmartApiAnalyzer.Infrastructure.Agents.Factory;
+using SmartApiAnalyzer.Infrastructure.Agents.Registry;
 
 using SmartApiAnalyzer.Infrastructure.queue;
 
@@ -121,8 +121,8 @@ public static class InfrastructureServiceRegistration
         services.AddScoped<ILatencyInspectionService,
             LatencyInspectionService>();
 
-        services.AddScoped<ISecurityHeaderInspectionService,
-            SecurityHeaderInspectionService>();
+        services.AddScoped<ISecurityHeaderService,
+            SecurityHeadersService>();
 
         services.AddScoped<IThreatIntelService,
             ThreatIntelService>();
@@ -148,6 +148,6 @@ public static class InfrastructureServiceRegistration
     private static void RegisterHttpClients(
         IServiceCollection services)
     {
-        // services.AddHttpClient();
+        services.AddHttpClient();
     }
 }

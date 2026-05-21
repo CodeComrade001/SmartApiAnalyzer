@@ -86,6 +86,8 @@ public sealed class EndpointDiscoveryResult
   public string? OpenApiUrl { get; init; }
 }
 
+// ── ThreatResult ─────────────────────────────────────────────────────────────
+
 public sealed class ThreatIntelResult
 {
   public double ThreatScore { get; init; }
@@ -95,7 +97,39 @@ public sealed class ThreatIntelResult
   public bool IsPrivateOrLoopback { get; init; }
   public bool IsUnencrypted { get; init; }
   public string Summary { get; init; } = string.Empty;
+  public double Score { get; init; }
 }
+
+// public sealed class ThreatIntelResult
+// {
+//   public ThreatVerdict Verdict { get; init; } = ThreatVerdict.Safe;
+
+//   public double RiskScore { get; init; }
+
+//   public ThreatFlags Flags { get; init; } = new();
+
+//   public ThreatMetadata Metadata { get; init; } = new();
+
+//   public IReadOnlyCollection<string> Reasons { get; init; }
+//       = Array.Empty<string>();
+// }
+
+// public enum ThreatVerdict
+// {
+//   Safe,
+//   Suspicious,
+//   Malicious,
+//   Unknown
+// }
+
+// public sealed class ThreatFlags
+// {
+//   public bool IsMalicious { get; init; }
+//   public bool SuspiciousHost { get; init; }
+//   public bool DnsFailure { get; init; }
+//   public bool IsPrivateOrLoopback { get; init; }
+//   public bool IsUnencrypted { get; init; }
+// }
 
 // ── DomainHijack ─────────────────────────────────────────────────────────────
 
@@ -143,9 +177,11 @@ public sealed class SecurityHeadersResult
   public bool HasXssProtection { get; init; }
   public List<string> MissingHeaders { get; init; } = new();
   public Dictionary<string, string> PresentHeaders { get; init; } = new();
-  public int Score { get; init; }  // 0-100
+  public double Score { get; init; }  // 0-100
   public string Grade { get; init; } = string.Empty;
   public bool IsCritical { get; init; }
+  public List<string> Findings { get; init; } = new();
+  public List<string> MisconfiguredHeaders { get; init; } = new();
 }
 
 // ── CredentialExposure ────────────────────────────────────────────────────────

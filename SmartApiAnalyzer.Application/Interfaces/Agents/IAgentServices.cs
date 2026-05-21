@@ -36,7 +36,7 @@ public interface ISslTlsCheckService
 
 // ── 4. SecurityHeaders ───────────────────────────────────────────────────────
 
-public interface ISecurityHeadersService
+public interface ISecurityHeaderService
 {
     Task<SecurityHeadersResult> AnalyzeAsync(Uri uri, CancellationToken ct);
 }
