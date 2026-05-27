@@ -31,7 +31,7 @@ public sealed class CredentialCheck_Agent : IAgent
         {
             ct.ThrowIfCancellationRequested();
 
-            if (!Uri.TryCreate(evt.Endpoint?.Trim(), UriKind.Absolute, out var uri))
+            if (!Uri.TryCreate(evt.domainUrl?.Trim(), UriKind.Absolute, out var uri))
                 return AgentRequestFactory.CriticalStop(Name, "Invalid URL.", sw.Elapsed);
 
             var result = await _service.AnalyzeAsync(uri, ct);

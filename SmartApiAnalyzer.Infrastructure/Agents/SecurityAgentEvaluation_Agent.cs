@@ -15,7 +15,7 @@ namespace SmartApiAnalyzer.Infrastructure.Agents;
 public sealed class SecurityAgentEvaluation_Agent : IAgent
 {
     public string Name => AgentType.SecurityAgentEvaluation.ToSystemName();
-    public int Priority => 11;
+    public int Priority => (int)AgentType.SecurityAgentEvaluation;
 
     public Task<AgentResult> ExecuteAsync(LogIngestedEvent evt, CancellationToken ct)
     {

@@ -45,7 +45,6 @@ public static class ApplicationServiceRegistration
         // USE CASES
         // ======================================================
         services.AddScoped<IRealtimeNotifier, RealtimeNotifier>();
-
         // services.AddScoped<IIngestLogUseCase, IngestLogUseCase>();
 
         return services;

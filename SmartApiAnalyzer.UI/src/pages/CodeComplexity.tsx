@@ -340,8 +340,8 @@ export default function CodeComplexity() {
         <Card className="glass-card overflow-hidden rounded-2xl">
           <div className="p-5">
             <input
+              placeholder="Input COmplexity Ignore"
               ref={ignoreInputRef}
-              title="Upload .complexityignore file"
               type="file"
               className="hidden"
               accept=".complexityignore,text/plain"

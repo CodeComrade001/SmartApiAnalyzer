@@ -34,7 +34,7 @@ public sealed class UrlValidationAndEndpointGeneration_Agent : IAgent
 
   public string Name => AgentType.UrlValidationAndEndpoints.ToSystemName();
 
-  public int Priority => 1;
+  public int Priority => (int)AgentType.UrlValidationAndEndpoints;
 
   public async Task<AgentResult> ExecuteAsync(
       LogIngestedEvent evt,
@@ -46,7 +46,7 @@ public sealed class UrlValidationAndEndpointGeneration_Agent : IAgent
     {
       ct.ThrowIfCancellationRequested();
 
-      var rawUrl = evt.Endpoint?.Trim();
+      var rawUrl = evt.domainUrl?.Trim();
 
       if (string.IsNullOrWhiteSpace(rawUrl))
       {
@@ -86,9 +86,9 @@ public sealed class UrlValidationAndEndpointGeneration_Agent : IAgent
       }
 
       // Discover routes
-      AppLogger.Log("Endpoint discovery starting...");
+      AppLogger.Log("domainUrl discovery starting...");
       var discovered = await _endpointDiscovery.DiscoverAsync(uri, ct);
-      AppLogger.Log("Endpoint discovery done.");
+      AppLogger.Log("domainUrl discovery done.");
 
       var routes = discovered.DiscoveredRoutes
           .Where((string x) => !string.IsNullOrWhiteSpace(x))

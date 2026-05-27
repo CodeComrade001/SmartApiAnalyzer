@@ -565,10 +565,11 @@ export default function Landing() {
           {tiers.map((tier) => (
             <motion.div key={tier.name} variants={fadeUp}>
               <Card
-                className={`relative flex h-full flex-col rounded-2xl p-6 ${tier.popular
+                className={`relative flex h-full flex-col rounded-2xl p-6 ${
+                  tier.popular
                     ? "glass-strong border-[hsl(var(--brand-violet))]/40 shadow-2xl glow-violet"
                     : "glass-card"
-                  }`}
+                }`}
               >
                 {tier.popular && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
@@ -704,7 +705,7 @@ export default function Landing() {
                     <span className="font-mono text-xs text-muted-foreground">/api/file/repos/analyze</span>
                   </div>
                   <pre className="px-5 py-4 text-xs leading-relaxed text-foreground/85">
-                    {`{
+{`{
   "repo": "archive.zip",
   "language": "typescript"
 }`}
@@ -716,7 +717,7 @@ export default function Landing() {
                     <span className="font-mono text-xs font-semibold text-[hsl(var(--brand-emerald))]">200 OK</span>
                   </div>
                   <pre className="px-5 py-4 text-xs leading-relaxed text-foreground/85">
-                    {`{
+{`{
   "score": 7.8,
   "risk": "medium",
   "hotspots": [

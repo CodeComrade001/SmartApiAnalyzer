@@ -10,7 +10,7 @@ namespace SmartApiAnalyzer.Infrastructure.Agents;
 public sealed class Alert_Agent : IAgent
 {
   public string Name => AgentType.Alert.ToSystemName();
-  public int Priority => 20;
+  public int Priority => (int)AgentType.Alert;
 
   public Task<AgentResult> ExecuteAsync(LogIngestedEvent evt, CancellationToken ct)
   {
@@ -28,7 +28,7 @@ public sealed class Alert_Agent : IAgent
       if (evt.StatusCode >= 500)
         alerts.Add("Server error spike");
 
-      if (string.IsNullOrWhiteSpace(evt.Endpoint))
+      if (string.IsNullOrWhiteSpace(evt.domainUrl))
         alerts.Add("Missing endpoint");
 
       var severity =

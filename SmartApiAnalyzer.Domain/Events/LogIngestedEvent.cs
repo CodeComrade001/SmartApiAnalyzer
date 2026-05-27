@@ -6,7 +6,7 @@ public sealed class LogIngestedEvent
 {
     public Guid EventId { get; }
     public Guid TenantId { get; }
-    public string Endpoint { get; }
+    public string domainUrl { get; }
     public int StatusCode { get; }
     public double ResponseTimeMs { get; }
     public DateTime Timestamp { get; }
@@ -25,14 +25,14 @@ public sealed class LogIngestedEvent
 
     public LogIngestedEvent(
         Guid tenantId,
-        string endpoint,
+        string passedDomainUrl,
         int statusCode,
         double responseTimeMs,
         DateTime timestamp)
     {
         EventId = Guid.NewGuid();
         TenantId = tenantId;
-        Endpoint = endpoint;
+        domainUrl = passedDomainUrl;
         StatusCode = statusCode;
         ResponseTimeMs = responseTimeMs;
         Timestamp = timestamp;

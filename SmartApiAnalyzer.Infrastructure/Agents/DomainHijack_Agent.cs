@@ -30,7 +30,7 @@ public sealed class DomainHijack_Agent : IAgent
             ct.ThrowIfCancellationRequested();
 
             var uri = evt.NormalizedUri;
-            if (uri is null || !Uri.TryCreate(evt.Endpoint?.Trim(), UriKind.Absolute, out uri))
+            if (uri is null || !Uri.TryCreate(evt.domainUrl?.Trim(), UriKind.Absolute, out uri))
                 return AgentRequestFactory.CriticalStop(Name, "No valid URI available.", sw.Elapsed);
 
             var result = await _service.AnalyzeAsync(uri, ct);

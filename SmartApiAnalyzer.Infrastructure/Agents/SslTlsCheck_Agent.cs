@@ -29,17 +29,17 @@ public sealed class SslTlsCheck_Agent : IAgent
         {
             ct.ThrowIfCancellationRequested();
 
-            if (!Uri.TryCreate(evt.Endpoint?.Trim(), UriKind.Absolute, out var uri))
+            if (!Uri.TryCreate(evt.domainUrl?.Trim(), UriKind.Absolute, out var uri))
                 return AgentRequestFactory.CriticalStop(Name, "Invalid URI.", sw.Elapsed);
 
             // Non-HTTPS targets skip this agent gracefully — SecurityHeaders will flag it.
             if (!string.Equals(uri.Scheme, "https", StringComparison.OrdinalIgnoreCase))
             {
                 return AgentRequestFactory.Warning(
-                    Name,
-                    "Target is not HTTPS — SSL/TLS check skipped. Insecure scheme detected.",
-                    sw.Elapsed,
-                    new Dictionary<string, object> { ["Scheme"] = uri.Scheme, ["IsHttps"] = false });
+                Name,
+                "Target is not HTTPS — SSL/TLS check skipped. Insecure scheme detected.",
+                sw.Elapsed,
+                new Dictionary<string, object> { ["Scheme"] = uri.Scheme, ["IsHttps"] = false });
             }
 
             var result = await _service.AnalyzeAsync(uri, ct);

@@ -15,7 +15,7 @@ namespace SmartApiAnalyzer.Infrastructure.Agents;
 public sealed class Metrics_Agent : IAgent
 {
     public string Name => AgentType.Metrics.ToSystemName();
-    public int Priority => 8;
+    public int Priority => (int)AgentType.Metrics;
 
     public Task<AgentResult> ExecuteAsync(LogIngestedEvent evt, CancellationToken ct)
     {
