@@ -10,7 +10,7 @@ namespace SmartApiAnalyzer.Infrastructure.Agents;
 public sealed class Security_Agent : IAgent
 {
   public string Name => AgentType.SecurityAgentEvaluation.ToSystemName();
-  public int Priority => 8;
+  public int Priority => (int)AgentType.SecurityAgentEvaluation;
 
   public Task<AgentResult> ExecuteAsync(LogIngestedEvent evt, CancellationToken ct)
   {
@@ -22,10 +22,10 @@ public sealed class Security_Agent : IAgent
 
       var issues = new List<string>();
 
-      if (evt.Endpoint?.StartsWith("http://") == true)
+      if (evt.domainUrl?.StartsWith("http://") == true)
         issues.Add("Unencrypted HTTP usage");
 
-      if (string.IsNullOrWhiteSpace(evt.Endpoint))
+      if (string.IsNullOrWhiteSpace(evt.domainUrl))
         issues.Add("Missing endpoint");
 
       var riskScore = issues.Count * 25;

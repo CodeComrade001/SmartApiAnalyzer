@@ -43,7 +43,7 @@ public class LogService : ILogService
       var log = new LogSchema.LogResponse
       {
         Id = Guid.NewGuid(),
-        Endpoint = request.Endpoint,
+        domainUrl = request.domainUrl,
         StatusCode = request.StatusCode,
         ResponseTimeMs = request.ResponseTimeMs,
         Timestamp = request.Timestamp
@@ -54,7 +54,7 @@ public class LogService : ILogService
       await _eventBus.PublishAsync(
           new LogIngestedEvent(
               log.Id,
-              log.Endpoint,
+              log.domainUrl,
               log.StatusCode,
               log.ResponseTimeMs,
               log.Timestamp

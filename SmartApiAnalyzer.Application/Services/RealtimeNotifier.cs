@@ -10,7 +10,7 @@ public sealed class RealtimeNotifier : IRealtimeNotifier
       LogIngestedEvent? evt = null,
       CancellationToken ct = default)
   {
-    Console.WriteLine($"[Realtime] {message}");
+    Console.WriteLine($"[Realtime] : {message}");
 
     return Task.CompletedTask;
   }

@@ -10,7 +10,7 @@ namespace SmartApiAnalyzer.Infrastructure.Agents;
 public sealed class CostAnalysis_Agent : IAgent
 {
   public string Name => AgentType.CostAnalysis.ToSystemName();
-  public int Priority => 4;
+  public int Priority => (int)AgentType.CostAnalysis;
 
   public Task<AgentResult> ExecuteAsync(LogIngestedEvent evt, CancellationToken ct)
   {

@@ -19,15 +19,14 @@ public sealed class AgentCoordinator : ICoordinator
   private readonly IRealtimeNotifier _notifier;
   private readonly ILogger<AgentCoordinator> _logger;
 
-  // Per-agent wall-clock timeout. Prevents a single hanging service
-  // from stalling the entire pipeline indefinitely.
   private static readonly TimeSpan AgentTimeout = TimeSpan.FromSeconds(30);
 
   public AgentCoordinator(
       IAgentRegistry registry,
       IAgentSelector selector,
       IRealtimeNotifier notifier,
-      ILogger<AgentCoordinator> logger)
+      ILogger<AgentCoordinator> logger
+      )
   {
     _registry = registry;
     _selector = selector;
@@ -43,8 +42,8 @@ public sealed class AgentCoordinator : ICoordinator
     var pipeline = Stopwatch.StartNew();
 
     _logger.LogInformation(
-        $"Pipeline starting for EventId={evt.EventId} TenantId={evt.TenantId} Endpoint={evt.Endpoint}",
-        evt.EventId, evt.TenantId, evt.Endpoint);
+        "Pipeline starting for EventId={evt.EventId} TenantId={evt.TenantId} Endpoint={evt.domainUrl}",
+        evt.EventId, evt.TenantId, evt.domainUrl);
 
     // ── Phase 1: Gatekeeper — always first, always exclusive ──────────
     if (!_registry.TryGet(AgentType.UrlValidationAndEndpoints.ToSystemName(), out var gatekeeper)
@@ -63,7 +62,7 @@ public sealed class AgentCoordinator : ICoordinator
     if (gatekeeperResult.StopProcessing)
     {
       _logger.LogWarning(
-          $"Pipeline halted by gatekeeper. Reason: {gatekeeperResult.Message}", gatekeeperResult.Message);
+          "Pipeline halted by gatekeeper. Reason: {gatekeeperResult.Message}", gatekeeperResult.Message);
 
       return Halted(evt, results, pipeline.Elapsed, gatekeeperResult.Message);
     }
@@ -77,8 +76,8 @@ public sealed class AgentCoordinator : ICoordinator
     {
       ct.ThrowIfCancellationRequested();
 
-      _logger.LogDebug($"Starting agent: {agent.Name}", agent.Name);
-      await _notifier.NotifyAsync($"{agent.Name} started.", evt, ct);
+      _logger.LogDebug("Starting agent: {agent.Name}", agent.Name);
+      await _notifier.NotifyAsync("{agent.Name} started.", evt, ct);
 
       var result = await ExecuteWithTimeoutAsync(agent, evt, ct);
       results.Add(result);
@@ -87,13 +86,13 @@ public sealed class AgentCoordinator : ICoordinator
       await _notifier.NotifyAsync(result.Message, evt, ct);
 
       _logger.LogDebug(
-          $"Agent {agent.Name} completed in {result.Elapsed.TotalMilliseconds}ms. Stop={result.StopProcessing} Severity={result.Severity}",
+          "Agent {agent.Name} completed in {result.Elapsed.TotalMilliseconds}ms. Stop={result.StopProcessing} Severity={result.Severity}",
           agent.Name, result.Elapsed.TotalMilliseconds, result.StopProcessing, result.Severity);
 
       if (result.StopProcessing)
       {
         _logger.LogWarning(
-            $"Pipeline short-circuited by agent {agent.Name}. Reason: {result.Message}",
+            "Pipeline short-circuited by agent {agent.Name}. Reason: {result.Message}",
             agent.Name, result.Message);
 
         pipeline.Stop();
@@ -113,7 +112,7 @@ public sealed class AgentCoordinator : ICoordinator
     pipeline.Stop();
 
     _logger.LogInformation(
-        $"Pipeline completed for EventId={evt.EventId} in {pipeline.Elapsed.TotalMilliseconds}ms. Agents run: {results.Count}",
+        "Pipeline completed for EventId={evt.EventId} in {pipeline.Elapsed.TotalMilliseconds}ms. Agents run: {results.Count}",
         evt.EventId, pipeline.Elapsed.TotalMilliseconds, results.Count);
 
     return new PipelineResult
@@ -135,7 +134,7 @@ public sealed class AgentCoordinator : ICoordinator
     ArgumentNullException.ThrowIfNull(request);
 
     _logger.LogInformation(
-        $"Resuming session {sessionId} with {request.Routes.Count} approved route(s).",
+        "Resuming session {sessionId} with {request.Routes.Count} approved route(s).",
         sessionId, request.Routes.Count);
 
     // ResumeAsync rehydrates a minimal event representing the approved continuation.
@@ -144,7 +143,7 @@ public sealed class AgentCoordinator : ICoordinator
     // must guard against a null NormalizedUri.
     var evt = new LogIngestedEvent(
         request.TenantId,
-        endpoint: string.Empty,
+        passedDomainUrl: string.Empty,
         statusCode: 200,
         responseTimeMs: 0,
         timestamp: DateTime.UtcNow)
@@ -154,7 +153,7 @@ public sealed class AgentCoordinator : ICoordinator
     };
 
     await _notifier.NotifyAsync(
-        $"Session {sessionId}: user approved {request.Routes.Count} route(s). Resuming.",
+        "Session {sessionId}: user approved {request.Routes.Count} route(s). Resuming.",
         evt, ct);
 
     return await RunDownstreamOnlyAsync(evt, ct);
@@ -184,7 +183,7 @@ public sealed class AgentCoordinator : ICoordinator
       {
         pipeline.Stop();
         return Halted(evt, results, pipeline.Elapsed,
-            $"[{agent.Name}] {result.Message}");
+            "[{agent.Name}] {result.Message}");
       }
     }
 
@@ -216,12 +215,12 @@ public sealed class AgentCoordinator : ICoordinator
       // Per-agent timeout fired, not the pipeline's external token
       sw.Stop();
       _logger.LogWarning(
-          $"Agent {agent.Name} exceeded {AgentTimeout.TotalSeconds}s timeout and was cancelled.",
+          "Agent {agent.Name} exceeded {AgentTimeout.TotalSeconds}s timeout and was cancelled.",
           agent.Name, AgentTimeout.TotalSeconds);
 
       return AgentResult.CreateWarning(
           agent.Name,
-          $"Agent timed out after {AgentTimeout.TotalSeconds}s.",
+          "Agent timed out after {AgentTimeout.TotalSeconds}s.",
           sw.Elapsed);
     }
   }

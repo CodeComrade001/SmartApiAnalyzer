@@ -15,6 +15,8 @@ import NotFound from "./pages/not-found";
 import Landing from "./pages/Landing";
 import CodeComplexity from "./pages/CodeComplexity";
 import MCPServer from "./pages/MCPServer";
+import { ScanProvider } from "./context/ScanContext";
+import AgentsPage from "./pages/Agents";
 
 function LoadingFallback() {
   return (
@@ -49,6 +51,7 @@ function AppRouter() {
           <Route path="/dashboard/insights" component={Insights} />
           <Route path="/dashboard/subscription" component={Subscription} />
           <Route path="/dashboard/settings" component={Settings} />
+          <Route path="/dashboard/agents" component={AgentsPage} />
           <Route path="/dashboard/code-complexity" component={CodeComplexity} />
           <Route path="/dashboard/mcp-server" component={MCPServer} />
           <Route component={NotFound} />
@@ -60,12 +63,14 @@ function AppRouter() {
 
 function App() {
   return (
-    <ThemeProvider defaultTheme="dark" storageKey="analyzer-theme">
-      <TooltipProvider>
-        <AppRouter />
-        <Toaster />
-      </TooltipProvider>
-    </ThemeProvider>
+    <ScanProvider>
+      <ThemeProvider defaultTheme="dark" storageKey="analyzer-theme">
+        <TooltipProvider>
+          <AppRouter />
+          <Toaster />
+        </TooltipProvider>
+      </ThemeProvider>
+    </ScanProvider>
   );
 }
 

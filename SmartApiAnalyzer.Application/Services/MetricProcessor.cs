@@ -17,7 +17,7 @@ public class MetricProcessor : IMetricProcessor
 
   public void Process(LogIngestedEvent logEvent)
   {
-    var key = $"{logEvent.TenantId}:{logEvent.Endpoint}";
+    var key = $"{logEvent.TenantId}:{logEvent.domainUrl}";
 
     if (!_store.ContainsKey(key))
       _store[key] = new List<LogIngestedEvent>();

@@ -11,6 +11,8 @@ public sealed class AgentSelector : IAgentSelector
   private static readonly AgentType[] ExecutionPlan =
   {
         AgentType.SecurityHeaders,
+        AgentType.DomainHijack,
+        AgentType.LatencyPerformance,
         AgentType.SslTlsCheck,
         AgentType.CostAnalysis,
         AgentType.Alert
