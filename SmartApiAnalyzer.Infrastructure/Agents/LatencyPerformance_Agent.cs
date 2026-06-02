@@ -24,7 +24,9 @@ public sealed class LatencyPerformance_Agent : IAgent
         _logger = logger;
     }
 
-    public async Task<AgentResult> ExecuteAsync(LogIngestedEvent evt, CancellationToken ct)
+    public async Task<IAgentResult> ExecuteAsync(
+      GateKeeperIngestedEvent evt,
+      CancellationToken ct)
     {
         var sw = Stopwatch.StartNew();
         try
@@ -63,7 +65,7 @@ public sealed class LatencyPerformance_Agent : IAgent
         catch (Exception ex)
         {
             _logger.LogError(ex, "LatencyPerformance agent fault");
-            return AgentRequestFactory.Warning(
+            return AgentRequestFactory.CriticalStop(
                 Name, $"Latency check inconclusive: {ex.GetType().Name} — {ex.Message}", sw.Elapsed);
         }
         finally { sw.Stop(); }

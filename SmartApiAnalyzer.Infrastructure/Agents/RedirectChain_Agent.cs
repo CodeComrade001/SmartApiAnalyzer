@@ -22,7 +22,9 @@ public sealed class RedirectChain_Agent : IAgent
         _logger = logger;
     }
 
-    public async Task<AgentResult> ExecuteAsync(LogIngestedEvent evt, CancellationToken ct)
+    public async Task<IAgentResult> ExecuteAsync(
+      GateKeeperIngestedEvent evt,
+      CancellationToken ct)
     {
         var sw = Stopwatch.StartNew();
         try
@@ -54,7 +56,7 @@ public sealed class RedirectChain_Agent : IAgent
             {
                 _logger.LogWarning("Redirect loop detected on {Host}", uri.Host);
                 return AgentRequestFactory.CriticalStop(
-                    Name, "Redirect loop detected — request will never resolve.", sw.Elapsed, payload);
+                    Name, "Redirect loop detected — request will never resolve.", sw.Elapsed);
             }
 
             if (result.LandsOnHttp)
@@ -78,7 +80,7 @@ public sealed class RedirectChain_Agent : IAgent
         catch (Exception ex)
         {
             _logger.LogError(ex, "RedirectChain agent fault");
-            return AgentRequestFactory.Warning(
+            return AgentRequestFactory.CriticalStop(
                 Name, $"Redirect check inconclusive: {ex.GetType().Name} — {ex.Message}", sw.Elapsed);
         }
         finally { sw.Stop(); }

@@ -22,7 +22,9 @@ public sealed class DomainHijack_Agent : IAgent
         _logger = logger;
     }
 
-    public async Task<AgentResult> ExecuteAsync(LogIngestedEvent evt, CancellationToken ct)
+    public async Task<IAgentResult> ExecuteAsync(
+      GateKeeperIngestedEvent evt,
+      CancellationToken ct)
     {
         var sw = Stopwatch.StartNew();
         try
@@ -53,7 +55,7 @@ public sealed class DomainHijack_Agent : IAgent
                     "Domain hijack vulnerability detected on {Host}: {Summary}",
                     uri.Host, result.Summary);
 
-                return AgentRequestFactory.CriticalStop(
+                return AgentRequestFactory.Warning(
                     Name, $"Domain hijack risk: {result.Summary}", sw.Elapsed, payload);
             }
 
@@ -63,7 +65,7 @@ public sealed class DomainHijack_Agent : IAgent
         catch (Exception ex)
         {
             _logger.LogError(ex, "DomainHijack agent fault");
-            return AgentRequestFactory.Warning(
+            return AgentRequestFactory.CriticalStop(
                 Name, $"Domain hijack check inconclusive: {ex.GetType().Name} — {ex.Message}", sw.Elapsed);
         }
         finally { sw.Stop(); }

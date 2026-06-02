@@ -90,14 +90,13 @@ public static class InfrastructureServiceRegistration
     private static void RegisterAgents(
         IServiceCollection services)
     {
-        services.AddScoped<AgentRequestFactory>();
+        // services.AddScoped<AgentRequestFactory>();
 
         services.AddScoped<IAgent, Security_Agent>();
 
         services.AddScoped<IAgent, CostAnalysis_Agent>();
 
-        services.AddScoped<IAgent,
-            UrlValidationAndEndpointGeneration_Agent>();
+        services.AddScoped<IGateKeeperAgent, GateKeeper_Agent>();
 
         services.AddScoped<IAgent, SecurityHeaders_Agent>();
 

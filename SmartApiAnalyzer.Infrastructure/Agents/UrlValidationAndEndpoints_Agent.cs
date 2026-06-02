@@ -30,7 +30,9 @@
 //         _logger = logger;
 //     }
 
-//     public async Task<AgentResult> ExecuteAsync(LogIngestedEvent evt, CancellationToken ct)
+//     public async Task<IAgentResult> ExecuteAsync(
+// GateKeeperIngestedEvent evt,
+// CancellationToken ct);
 //     {
 //         var sw = Stopwatch.StartNew();
 //         try

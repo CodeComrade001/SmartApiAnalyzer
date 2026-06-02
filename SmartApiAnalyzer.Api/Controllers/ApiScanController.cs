@@ -1,28 +1,28 @@
 using Microsoft.AspNetCore.Mvc;
 using Application.DTOs;
-using Application.DTOs.Logs;
 using SmartApiAnalyzer.Application.Services.Interface.ControllerServices;
+using Application.DTOs.ApiScan;
 
 namespace Api.Controllers;
 
 [ApiController]
-[Route("api/v1/logs")]
-public class LogsController : ControllerBase
+[Route("api/v1/scans")]
+public class ApiScanController : ControllerBase
 {
-    private readonly ILogService _logService;
+    private readonly IApiScanService _ApiScanService;
 
-    public LogsController(ILogService logService)
+    public ApiScanController(IApiScanService logService)
     {
-        _logService = logService;
+        _ApiScanService = logService;
     }
 
     [HttpPost("ingest")]
-    public async Task<IActionResult> Ingest([FromBody] LogSchema.IngestLogRequest request)
+    public async Task<IActionResult> Ingest([FromBody] ApiScanSchema.StartApiScanRequest request, CancellationToken ct)
     {
         if (!ModelState.IsValid)
             return ValidationProblem(ModelState);
 
-        var result = await _logService.IngestAsync(request);
+        var result = await _ApiScanService.IngestAsync(request, ct);
 
         if (!result.Success)
             return BadRequest(result);
@@ -33,7 +33,7 @@ public class LogsController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAll([FromQuery] PaginationRequest request)
     {
-        var result = await _logService.GetAllAsync();
+        var result = await _ApiScanService.GetAllAsync();
 
         if (!result.Success)
             return BadRequest(result);
@@ -47,7 +47,7 @@ public class LogsController : ControllerBase
         if (id == Guid.Empty)
             return BadRequest("Invalid Id");
 
-        var result = await _logService.GetByIdAsync(id);
+        var result = await _ApiScanService.GetByIdAsync(id);
 
         if (!result.Success)
             return NotFound(result);

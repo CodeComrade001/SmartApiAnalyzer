@@ -22,7 +22,9 @@ public sealed class SslTlsCheck_Agent : IAgent
         _logger = logger;
     }
 
-    public async Task<AgentResult> ExecuteAsync(LogIngestedEvent evt, CancellationToken ct)
+    public async Task<IAgentResult> ExecuteAsync(
+      GateKeeperIngestedEvent evt,
+      CancellationToken ct)
     {
         var sw = Stopwatch.StartNew();
         try
@@ -62,7 +64,7 @@ public sealed class SslTlsCheck_Agent : IAgent
                 _logger.LogWarning(
                     "SSL/TLS critical failure on {Host}: {Reason}", uri.Host, result.FailureReason);
 
-                return AgentRequestFactory.CriticalStop(
+                return AgentRequestFactory.Warning(
                     Name, result.FailureReason ?? "Certificate is invalid or expired.", sw.Elapsed, payload);
             }
 
@@ -80,7 +82,7 @@ public sealed class SslTlsCheck_Agent : IAgent
         catch (Exception ex)
         {
             _logger.LogError(ex, "SslTlsCheck agent fault");
-            return AgentRequestFactory.Warning(
+            return AgentRequestFactory.CriticalStop(
                 Name, $"SSL/TLS check inconclusive: {ex.GetType().Name} — {ex.Message}", sw.Elapsed);
         }
         finally { sw.Stop(); }

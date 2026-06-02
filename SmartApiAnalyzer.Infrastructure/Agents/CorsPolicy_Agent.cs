@@ -22,7 +22,9 @@ public sealed class CorsPolicy_Agent : IAgent
         _logger = logger;
     }
 
-    public async Task<AgentResult> ExecuteAsync(LogIngestedEvent evt, CancellationToken ct)
+    public async Task<IAgentResult> ExecuteAsync(
+      GateKeeperIngestedEvent evt,
+      CancellationToken ct)
     {
         var sw = Stopwatch.StartNew();
         try
@@ -58,7 +60,7 @@ public sealed class CorsPolicy_Agent : IAgent
                     Name,
                     "Critical CORS misconfiguration: Access-Control-Allow-Origin: * combined with " +
                     "Access-Control-Allow-Credentials: true. Any origin can make credentialed requests.",
-                    sw.Elapsed, payload);
+                    sw.Elapsed);
             }
 
             if (result.IsMisconfigured)
@@ -74,7 +76,7 @@ public sealed class CorsPolicy_Agent : IAgent
         catch (Exception ex)
         {
             _logger.LogError(ex, "CorsPolicy agent fault");
-            return AgentRequestFactory.Warning(
+            return AgentRequestFactory.CriticalStop(
                 Name, $"CORS check inconclusive: {ex.GetType().Name} — {ex.Message}", sw.Elapsed);
         }
         finally { sw.Stop(); }

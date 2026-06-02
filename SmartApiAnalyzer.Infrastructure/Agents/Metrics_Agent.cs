@@ -17,7 +17,7 @@ public sealed class Metrics_Agent : IAgent
     public string Name => AgentType.Metrics.ToSystemName();
     public int Priority => (int)AgentType.Metrics;
 
-    public Task<AgentResult> ExecuteAsync(LogIngestedEvent evt, CancellationToken ct)
+    public async Task<IAgentResult> ExecuteAsync(GateKeeperIngestedEvent evt, CancellationToken ct)
     {
         var sw = Stopwatch.StartNew();
 
@@ -59,11 +59,11 @@ public sealed class Metrics_Agent : IAgent
                 ["HealthStatus"] = healthStatus
             };
 
-            return Task.FromResult(AgentRequestFactory.Ok(
+            return AgentRequestFactory.Ok(
                 Name,
                 $"Metrics computed. Status={statusCode}, Latency={responseTime}ms, Grade={grade}, Health={healthStatus}",
                 sw.Elapsed,
-                payload));
+                payload);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -71,8 +71,8 @@ public sealed class Metrics_Agent : IAgent
         }
         catch (Exception ex)
         {
-            return Task.FromResult(
-                AgentRequestFactory.CriticalStop(Name, $"Metrics computation failed: {ex.Message}", sw.Elapsed));
+            return
+                AgentRequestFactory.CriticalStop(Name, $"Metrics computation failed: {ex.Message}", sw.Elapsed);
         }
         finally
         {

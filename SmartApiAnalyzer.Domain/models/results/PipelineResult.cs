@@ -8,7 +8,7 @@ public sealed class PipelineResult
   public Guid TenantId { get; init; }
   public bool Halted { get; init; }
   public string HaltReason { get; init; } = string.Empty;
-  public List<AgentResult> AgentResults { get; init; } = new();
+  public List<IAgentResult> AgentResults { get; init; } = new();
   public DateTime CompletedAt { get; init; } = DateTime.UtcNow;
   public TimeSpan TotalElapsed { get; init; }
 }

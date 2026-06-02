@@ -8,6 +8,6 @@ public interface IAgentSelector
   /// The gatekeeper is excluded — the coordinator handles it separately.
   /// </summary>
   IEnumerable<IAgent> Select(
-      LogIngestedEvent evt,
+      GateKeeperIngestedEvent evt,
       IEnumerable<IAgent> agents);
 }

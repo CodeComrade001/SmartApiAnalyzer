@@ -1,66 +1,103 @@
 
 namespace SmartApiAnalyzer.Domain.Entities.Models.Result.AgentServiceResults;
 
-public sealed class AgentResult
+public sealed class AgentResult<TPayload> : IAgentResult
 {
   public string AgentName { get; init; } = string.Empty;
+
   public bool Success { get; init; }
+
   public bool StopProcessing { get; init; }
+
   public string Message { get; init; } = string.Empty;
+
   public AgentSeverity Severity { get; init; }
+
   public TimeSpan Elapsed { get; init; }
-  public IReadOnlyDictionary<string, object> Payload { get; init; }
-      = new Dictionary<string, object>();
 
-  // Factory helpers kept on the model itself for internal use.
-  // AgentRequestFactory (Infrastructure) calls these.
-  public static AgentResult CreateOk(
+  public TPayload? Payload { get; init; }
+
+  // =========================================================
+  // Non-generic access for coordinators/pipelines
+  // =========================================================
+
+  public object? PayloadObject => Payload;
+
+  // =========================================================
+  // Factory Methods
+  // =========================================================
+
+  public static AgentResult<TPayload> CreateOk(
       string agentName,
       string message,
       TimeSpan elapsed,
-      Dictionary<string, object>? payload = null) => new()
-      {
-        AgentName = agentName,
-        Success = true,
-        StopProcessing = false,
-        Message = message,
-        Severity = AgentSeverity.Info,
-        Elapsed = elapsed,
-        Payload = payload ?? new Dictionary<string, object>()
-      };
+      TPayload? payload = default)
+  {
+    return new AgentResult<TPayload>
+    {
+      AgentName = agentName,
+      Success = true,
+      StopProcessing = false,
+      Message = message,
+      Severity = AgentSeverity.Info,
+      Elapsed = elapsed,
+      Payload = payload
+    };
+  }
 
-  public static AgentResult CreateWarning(
+  public static AgentResult<TPayload> CreateWarning(
       string agentName,
       string message,
       TimeSpan elapsed,
-      Dictionary<string, object>? payload = null) => new()
-      {
-        AgentName = agentName,
-        Success = true,
-        StopProcessing = false,
-        Message = message,
-        Severity = AgentSeverity.Warning,
-        Elapsed = elapsed,
-        Payload = payload ?? new Dictionary<string, object>()
-      };
+      TPayload? payload = default)
+  {
+    return new AgentResult<TPayload>
+    {
+      AgentName = agentName,
+      Success = true,
+      StopProcessing = false,
+      Message = message,
+      Severity = AgentSeverity.Warning,
+      Elapsed = elapsed,
+      Payload = payload
+    };
+  }
 
-  public static AgentResult CreateCriticalStop(
+  public static AgentResult<TPayload> CreateCriticalStop(
       string agentName,
       string message,
       TimeSpan elapsed,
-      Dictionary<string, object>? payload = null) => new()
-      {
-        AgentName = agentName,
-        Success = false,
-        StopProcessing = true,
-        Message = message,
-        Severity = AgentSeverity.Critical,
-        Elapsed = elapsed,
-        Payload = payload ?? new Dictionary<string, object>()
-      };
+      TPayload? payload = default)
+  {
+    return new AgentResult<TPayload>
+    {
+      AgentName = agentName,
+      Success = false,
+      StopProcessing = true,
+      Message = message,
+      Severity = AgentSeverity.Critical,
+      Elapsed = elapsed,
+      Payload = payload
+    };
+  }
 }
 
+public interface IAgentResult
+{
+  string AgentName { get; }
 
+  bool Success { get; }
+
+  bool StopProcessing { get; }
+
+  string Message { get; }
+
+  AgentSeverity Severity { get; }
+
+  TimeSpan Elapsed { get; }
+
+  object? PayloadObject { get; }
+}
 
 // ── UrlValidation ─────────────────────────────────────────────────────────────
 
