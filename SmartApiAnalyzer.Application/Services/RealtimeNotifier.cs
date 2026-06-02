@@ -7,10 +7,10 @@ public sealed class RealtimeNotifier : IRealtimeNotifier
 {
   public Task NotifyAsync(
       string message,
-      LogIngestedEvent? evt = null,
+      GateKeeperIngestedEvent? evt = null,
       CancellationToken ct = default)
   {
-    Console.WriteLine($"[Realtime] : {message}");
+    Console.WriteLine($"[Realtime] :  {message} , GatekeeperEvent: {evt}, CancellationToken: {ct}");
 
     return Task.CompletedTask;
   }

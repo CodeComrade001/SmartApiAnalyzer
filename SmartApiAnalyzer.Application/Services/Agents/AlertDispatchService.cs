@@ -22,7 +22,7 @@ public sealed class AlertDispatchService : IAlertDispatchService
     public Task<AlertDispatchResult> DispatchAsync(
         string tenantId,
         Guid sessionId,
-        IReadOnlyList<AgentResult> criticalResults,
+        IReadOnlyList<AgentResult<AlertDispatchResult>> criticalResults,
         CancellationToken ct)
     {
         var sw = Stopwatch.StartNew();

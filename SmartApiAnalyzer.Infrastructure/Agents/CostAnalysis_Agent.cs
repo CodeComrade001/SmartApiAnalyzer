@@ -12,7 +12,7 @@ public sealed class CostAnalysis_Agent : IAgent
   public string Name => AgentType.CostAnalysis.ToSystemName();
   public int Priority => (int)AgentType.CostAnalysis;
 
-  public Task<AgentResult> ExecuteAsync(LogIngestedEvent evt, CancellationToken ct)
+  public async Task<IAgentResult> ExecuteAsync(GateKeeperIngestedEvent evt, CancellationToken ct)
   {
     var sw = Stopwatch.StartNew();
 
@@ -37,16 +37,16 @@ public sealed class CostAnalysis_Agent : IAgent
             costScore < 500 ? "MEDIUM" : "HIGH"
       };
 
-      return Task.FromResult(AgentRequestFactory.Ok(
+      return AgentRequestFactory.Ok(
           Name,
           "Cost analysis completed.",
           sw.Elapsed,
-          payload));
+          payload);
     }
     catch (Exception ex)
     {
-      return Task.FromResult(
-          AgentRequestFactory.CriticalStop(Name, ex.Message, sw.Elapsed));
+      return
+          AgentRequestFactory.CriticalStop(Name, ex.Message, sw.Elapsed);
     }
     finally
     {

@@ -12,7 +12,7 @@ public sealed class Alert_Agent : IAgent
   public string Name => AgentType.Alert.ToSystemName();
   public int Priority => (int)AgentType.Alert;
 
-  public Task<AgentResult> ExecuteAsync(LogIngestedEvent evt, CancellationToken ct)
+  public async Task<IAgentResult> ExecuteAsync(GateKeeperIngestedEvent evt, CancellationToken ct)
   {
     var sw = Stopwatch.StartNew();
 
@@ -42,16 +42,16 @@ public sealed class Alert_Agent : IAgent
         ["Severity"] = severity
       };
 
-      return Task.FromResult(AgentRequestFactory.Ok(
+      return AgentRequestFactory.Ok(
           Name,
           "Alert evaluation completed.",
           sw.Elapsed,
-          payload));
+          payload);
     }
     catch (Exception ex)
     {
-      return Task.FromResult(
-          AgentRequestFactory.CriticalStop(Name, ex.Message, sw.Elapsed));
+      return
+          AgentRequestFactory.CriticalStop(Name, ex.Message, sw.Elapsed);
     }
     finally
     {

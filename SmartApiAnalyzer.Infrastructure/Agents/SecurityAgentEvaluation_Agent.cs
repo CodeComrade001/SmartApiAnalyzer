@@ -17,7 +17,7 @@ public sealed class SecurityAgentEvaluation_Agent : IAgent
     public string Name => AgentType.SecurityAgentEvaluation.ToSystemName();
     public int Priority => (int)AgentType.SecurityAgentEvaluation;
 
-    public Task<AgentResult> ExecuteAsync(LogIngestedEvent evt, CancellationToken ct)
+    public async Task<IAgentResult> ExecuteAsync(GateKeeperIngestedEvent evt, CancellationToken ct)
     {
         var sw = Stopwatch.StartNew();
 
@@ -29,8 +29,8 @@ public sealed class SecurityAgentEvaluation_Agent : IAgent
 
             if (results.Count == 0)
             {
-                return Task.FromResult(AgentRequestFactory.Ok(
-                    Name, "No prior agent results to evaluate.", sw.Elapsed));
+                return AgentRequestFactory.Ok(
+                    Name, "No prior agent results to evaluate.", sw.Elapsed, results);
             }
 
             double accumulated = 0;
@@ -55,7 +55,7 @@ public sealed class SecurityAgentEvaluation_Agent : IAgent
                 }
 
                 // Pull explicit risk scores produced by analysis agents
-                if (r.Payload.TryGetValue("RiskScore", out var raw) && raw is double agentRisk)
+                if (r.Payload is IDictionary<string, object> agentPayload && agentPayload.TryGetValue("RiskScore", out var raw) && raw is double agentRisk)
                     accumulated += agentRisk * 0.25; // weighted contribution
             }
 
@@ -90,11 +90,11 @@ public sealed class SecurityAgentEvaluation_Agent : IAgent
                 ["SynthesizedFindings"] = synthesized
             };
 
-            return Task.FromResult(AgentRequestFactory.Ok(
+            return AgentRequestFactory.Ok(
                 Name,
                 $"Security evaluation complete. Grade={grade} | Posture={posture} | Score={finalScore:F0}/100",
                 sw.Elapsed,
-                payload));
+                payload);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -102,8 +102,8 @@ public sealed class SecurityAgentEvaluation_Agent : IAgent
         }
         catch (Exception ex)
         {
-            return Task.FromResult(AgentRequestFactory.CriticalStop(
-                Name, $"Evaluation failed: {ex.GetType().Name}: {ex.Message}", sw.Elapsed));
+            return AgentRequestFactory.CriticalStop(
+                Name, $"Evaluation failed: {ex.GetType().Name}: {ex.Message}", sw.Elapsed);
         }
         finally
         {

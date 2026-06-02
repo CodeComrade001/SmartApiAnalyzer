@@ -24,7 +24,7 @@ public sealed class CredentialCheck_Agent : IAgent
         _logger = logger;
     }
 
-    public async Task<AgentResult> ExecuteAsync(LogIngestedEvent evt, CancellationToken ct)
+    public async Task<IAgentResult> ExecuteAsync(GateKeeperIngestedEvent evt, CancellationToken ct)
     {
         var sw = Stopwatch.StartNew();
         try
@@ -55,7 +55,7 @@ public sealed class CredentialCheck_Agent : IAgent
                     "Credential exposure critical risk on {Host}. Score: {Score}. Secrets: {Secrets}",
                     uri.Host, result.RiskScore, string.Join(", ", result.ExposedSecretTypes));
 
-                return AgentRequestFactory.CriticalStop(
+                return AgentRequestFactory.Warning(
                     Name,
                     $"Credential exposure risk detected. Score: {result.RiskScore:F1}. " +
                     (result.ExposedSecretsFound
@@ -80,7 +80,7 @@ public sealed class CredentialCheck_Agent : IAgent
         catch (Exception ex)
         {
             _logger.LogError(ex, "CredentialCheck agent fault");
-            return AgentRequestFactory.Warning(
+            return AgentRequestFactory.CriticalStop(
                 Name, $"Credential check inconclusive: {ex.GetType().Name} — {ex.Message}", sw.Elapsed);
         }
         finally { sw.Stop(); }

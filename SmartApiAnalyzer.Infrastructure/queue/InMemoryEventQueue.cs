@@ -6,17 +6,17 @@ namespace SmartApiAnalyzer.Infrastructure.queue;
 
 public class InMemoryEventQueue : IEventQueue
 {
-  private readonly Channel<LogIngestedEvent> _channel =
-      Channel.CreateUnbounded<LogIngestedEvent>();
+  private readonly Channel<GateKeeperIngestedEvent> _channel =
+      Channel.CreateUnbounded<GateKeeperIngestedEvent>();
 
   public async ValueTask EnqueueAsync(
-      LogIngestedEvent logEvent,
+      GateKeeperIngestedEvent logEvent,
       CancellationToken ct = default)
   {
     await _channel.Writer.WriteAsync(logEvent, ct);
   }
 
-  public async ValueTask<LogIngestedEvent> DequeueAsync(
+  public async ValueTask<GateKeeperIngestedEvent> DequeueAsync(
       CancellationToken ct = default)
   {
     return await _channel.Reader.ReadAsync(ct);

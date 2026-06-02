@@ -5,6 +5,7 @@ using SmartApiAnalyzer.Infrastructure.Agents.Factory;
 using SmartApiAnalyzer.Domain.Constants;
 using Infrastructure.Common;
 using SmartApiAnalyzer.Domain.Entities.Models.Result.AgentServiceResults;
+using SmartApiAnalyzer.Domain.Entities;
 
 namespace SmartApiAnalyzer.Infrastructure.Agents;
 
@@ -19,12 +20,12 @@ namespace SmartApiAnalyzer.Infrastructure.Agents;
 /// 4. Infer supported HTTP methods per route
 /// 5. Package normalized payload for downstream agents
 /// </summary>
-public sealed class UrlValidationAndEndpointGeneration_Agent : IAgent
+public sealed class GateKeeper_Agent : IGateKeeperAgent
 {
   private readonly IThreatIntelService _threatIntel;
   private readonly IEndpointDiscoveryService _endpointDiscovery;
 
-  public UrlValidationAndEndpointGeneration_Agent(
+  public GateKeeper_Agent(
       IThreatIntelService threatIntel,
       IEndpointDiscoveryService endpointDiscovery)
   {
@@ -36,11 +37,15 @@ public sealed class UrlValidationAndEndpointGeneration_Agent : IAgent
 
   public int Priority => (int)AgentType.UrlValidationAndEndpoints;
 
-  public async Task<AgentResult> ExecuteAsync(
-      LogIngestedEvent evt,
+  public async Task<IAgentResult> ExecuteAsync(
+      GateKeeperIngestedEvent evt,
       CancellationToken ct)
   {
     var sw = Stopwatch.StartNew();
+    var errorPayload = new Dictionary<string, object>
+    {
+      ["InputUrl"] = evt.domainUrl ?? "null"
+    };
 
     try
     {

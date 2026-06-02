@@ -17,7 +17,7 @@ public static class ApplicationServiceRegistration
         // APPLICATION SERVICES
         // ======================================================
 
-        services.AddScoped<ILogService, LogService>();
+        services.AddScoped<IApiScanService, ApiScanService>();
 
         services.AddScoped<IMetricsService, MetricsService>();
 

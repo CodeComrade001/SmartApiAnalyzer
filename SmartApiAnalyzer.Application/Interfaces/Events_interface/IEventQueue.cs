@@ -5,9 +5,9 @@ using SmartApiAnalyzer.Domain.Events;
 public interface IEventQueue
 {
     ValueTask EnqueueAsync(
-        LogIngestedEvent logEvent,
+        GateKeeperIngestedEvent logEvent,
         CancellationToken cancellationToken = default);
 
-    ValueTask<LogIngestedEvent> DequeueAsync(
+    ValueTask<GateKeeperIngestedEvent> DequeueAsync(
         CancellationToken cancellationToken = default);
 }

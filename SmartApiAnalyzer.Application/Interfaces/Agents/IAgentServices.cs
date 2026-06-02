@@ -71,5 +71,5 @@ public interface ILatencyInspectionService
 
 public interface IAlertDispatchService
 {
-    Task<AlertDispatchResult> DispatchAsync(string tenantId, Guid sessionId, IReadOnlyList<AgentResult> criticalResults, CancellationToken ct);
+    Task<AlertDispatchResult> DispatchAsync(string tenantId, Guid sessionId, IReadOnlyList<AgentResult<AlertDispatchResult>> criticalResults, CancellationToken ct);
 }

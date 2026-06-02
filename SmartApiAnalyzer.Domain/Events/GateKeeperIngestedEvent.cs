@@ -2,7 +2,7 @@ using SmartApiAnalyzer.Domain.Entities.Models.Result.AgentServiceResults;
 
 namespace SmartApiAnalyzer.Domain.Events;
 
-public sealed class LogIngestedEvent
+public sealed class GateKeeperIngestedEvent
 {
     public Guid EventId { get; }
     public Guid TenantId { get; }
@@ -11,7 +11,7 @@ public sealed class LogIngestedEvent
     public double ResponseTimeMs { get; }
     public DateTime Timestamp { get; }
 
-    // Set by UrlValidationAndEndpoints agent after gatekeeper pass
+    // Set by GateKeeper agent after validation
     public Uri? NormalizedUri { get; set; }
     public List<string> DiscoveredRoutes { get; set; } = new();
     public List<string> AllowedMethods { get; set; } = new();
@@ -23,7 +23,7 @@ public sealed class LogIngestedEvent
     // Accumulated agent payloads — written by coordinator after each agent
     public Dictionary<string, Dictionary<string, object>> AgentPayloads { get; } = new();
 
-    public LogIngestedEvent(
+    public GateKeeperIngestedEvent(
         Guid tenantId,
         string passedDomainUrl,
         int statusCode,
