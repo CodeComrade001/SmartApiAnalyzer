@@ -2,6 +2,7 @@ using System.Diagnostics;
 using SmartApiAnalyzer.Application.Services.Interface.Agents;
 using SmartApiAnalyzer.Domain.Constants;
 using SmartApiAnalyzer.Domain.Entities.Models.Result.AgentServiceResults;
+using SmartApiAnalyzer.Domain.Enums.Agents;
 using SmartApiAnalyzer.Domain.Events;
 using SmartApiAnalyzer.Infrastructure.Agents.Factory;
 
@@ -32,14 +33,14 @@ public sealed class Alert_Agent : IAgent
         alerts.Add("Missing endpoint");
 
       var severity =
-          alerts.Count == 0 ? "LOW" :
-          alerts.Count == 1 ? "MEDIUM" :
-          "HIGH";
+          alerts.Count == 0 ? SeverityStatus.Low :
+          alerts.Count == 1 ? SeverityStatus.Medium :
+          SeverityStatus.High;
 
-      var payload = new Dictionary<string, object>
+      var payload = new AllAgentsPayload.AlertAgentPayload
       {
-        ["Alerts"] = alerts,
-        ["Severity"] = severity
+        Alerts = alerts,
+        Severity = severity
       };
 
       return AgentRequestFactory.Ok(

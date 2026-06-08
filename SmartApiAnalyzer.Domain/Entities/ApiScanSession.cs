@@ -3,6 +3,7 @@
 // File: Domain/Entities/ApiScanSession.cs
 // =============================================
 
+using SmartApiAnalyzer.Domain.Entities.Payload;
 using SmartApiAnalyzer.Domain.Enums;
 using SmartApiAnalyzer.Domain.Models;
 
@@ -18,5 +19,5 @@ public sealed class ApiScanSession
 
   public ScanTelemetry Telemetry { get; set; } = default!;
 
-  public List<ApiEndpoint> Endpoints { get; set; } = [];
+  public List<EndpointRouteDto> Endpoints { get; set; } = new();
 }

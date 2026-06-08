@@ -1,6 +1,35 @@
 
 namespace SmartApiAnalyzer.Domain.Entities.Models.Result.AgentServiceResults;
 
+public sealed class AgentCriticalResult : IAgentResult
+{
+  public string AgentName { get; init; } = string.Empty;
+
+  public bool Success => false;
+
+  public bool StopProcessing => true;
+
+  public string Message { get; init; } = string.Empty;
+
+  public AgentSeverity Severity => AgentSeverity.Critical;
+
+  public TimeSpan Elapsed { get; init; }
+
+  public object? PayloadObject => null;
+
+  public static AgentCriticalResult CreateCriticalStop(
+      string agentName,
+      string message,
+      TimeSpan elapsed)
+  {
+    return new AgentCriticalResult
+    {
+      AgentName = agentName,
+      Message = message,
+      Elapsed = elapsed
+    };
+  }
+}
 public sealed class AgentResult<TPayload> : IAgentResult
 {
   public string AgentName { get; init; } = string.Empty;
@@ -62,24 +91,6 @@ public sealed class AgentResult<TPayload> : IAgentResult
       Payload = payload
     };
   }
-
-  public static AgentResult<TPayload> CreateCriticalStop(
-      string agentName,
-      string message,
-      TimeSpan elapsed,
-      TPayload? payload = default)
-  {
-    return new AgentResult<TPayload>
-    {
-      AgentName = agentName,
-      Success = false,
-      StopProcessing = true,
-      Message = message,
-      Severity = AgentSeverity.Critical,
-      Elapsed = elapsed,
-      Payload = payload
-    };
-  }
 }
 
 public interface IAgentResult
@@ -98,6 +109,8 @@ public interface IAgentResult
 
   object? PayloadObject { get; }
 }
+
+
 
 // ── UrlValidation ─────────────────────────────────────────────────────────────
 
