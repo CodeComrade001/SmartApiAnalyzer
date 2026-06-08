@@ -46,17 +46,17 @@ public sealed class SslTlsCheck_Agent : IAgent
 
             var result = await _service.AnalyzeAsync(uri, ct);
 
-            var payload = new Dictionary<string, object>
+            var payload = new AllAgentsPayload.SslTlsCheckAgentPayload
             {
-                ["Subject"] = result.Subject,
-                ["Issuer"] = result.Issuer,
-                ["ExpiresAt"] = result.ExpiresAt.ToString("o"),
-                ["DaysUntilExpiry"] = result.DaysUntilExpiry,
-                ["IsExpired"] = result.IsExpired,
-                ["IsExpiringSoon"] = result.IsExpiringSoon,
-                ["TlsVersion"] = result.TlsVersion,
-                ["IsTrusted"] = result.IsTrusted,
-                ["SupportsHsts"] = result.SupportsHsts,
+                Subject = result.Subject,
+                Issuer = result.Issuer,
+                ExpiresAt = result.ExpiresAt.ToString("o"),
+                DaysUntilExpiry = result.DaysUntilExpiry,
+                IsExpired = result.IsExpired,
+                IsExpiringSoon = result.IsExpiringSoon,
+                TlsVersion = result.TlsVersion,
+                IsTrusted = result.IsTrusted,
+                SupportsHsts = result.SupportsHsts
             };
 
             if (result.IsCritical)

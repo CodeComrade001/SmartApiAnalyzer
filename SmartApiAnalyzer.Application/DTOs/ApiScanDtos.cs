@@ -24,8 +24,6 @@ public static class ApiScanSchema
 
   public sealed class EndpointResponse
   {
-    public Guid EndpointId { get; set; }
-
     public string Path { get; set; } = default!;
 
     public List<string> SuggestedMethods { get; set; }

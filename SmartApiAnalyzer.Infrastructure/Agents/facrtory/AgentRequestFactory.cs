@@ -31,15 +31,14 @@ public static class AgentRequestFactory
             elapsed,
             payload);
 
-    public static AgentResult<object?> CriticalStop(
-    string agentName,
-    string message,
-    TimeSpan elapsed)
+    public static AgentCriticalResult CriticalStop(
+        string agentName,
+        string message,
+        TimeSpan elapsed)
     {
-        return AgentResult<object?>.CreateCriticalStop(
+        return AgentCriticalResult.CreateCriticalStop(
             agentName,
             message,
-            elapsed,
-            null);
+            elapsed);
     }
 }

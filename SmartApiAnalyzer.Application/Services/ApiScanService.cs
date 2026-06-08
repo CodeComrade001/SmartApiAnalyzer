@@ -1,8 +1,3 @@
-// =============================================
-// Services
-// File: Application/Services/ApiScanService.cs
-// =============================================
-
 using System.Diagnostics;
 using Application.DTOs.ApiScan;
 using Application.DTOs.Common;
@@ -75,7 +70,7 @@ public class ApiScanService : IApiScanService
       var gatekeeperResult = await _gatekeeperAgent.ExecuteAsync(
           gateKeeperEvent,
           ct);
-
+      Console.WriteLine($"GateKeeper Agent executed in {stopwatch.Elapsed.TotalSeconds} seconds with success: {gatekeeperResult.Success} found {gatekeeperResult.PayloadObject} endpoints.");
       // =========================================================
       // Validate Agent Result
       // =========================================================
@@ -96,20 +91,21 @@ public class ApiScanService : IApiScanService
             .Fail(gatekeeperResult.Message);
       }
 
-      // =========================================================
-      // Cast Payload
-      // =========================================================
+      if (gatekeeperResult.Payload == null)
+      {
+        return ServiceResult<ApiScanSchema.ApiScanResultResponse>
+            .Fail(gatekeeperResult.Message);
+      }
 
-      var endpoints = ((dynamic)gatekeeperResult).Payload as IEnumerable<ApiEndpoint>
-          ?? Enumerable.Empty<ApiEndpoint>();
+      var endpoints = gatekeeperResult.Payload.routesPayload;
 
       // =========================================================
       // Publish Event For Background Workers
       // =========================================================
 
-      await _eventBus.PublishAsync(
-          gateKeeperEvent,
-          ct);
+      // await _eventBus.PublishAsync(
+      //     gateKeeperEvent,
+      //     ct);
 
       stopwatch.Stop();
 
@@ -134,7 +130,7 @@ public class ApiScanService : IApiScanService
         DomainUrl = request.DomainUrl,
         Status = ScanStatus.PendingApproval,
         Telemetry = telemetry,
-        Endpoints = endpoints.ToList()
+        Endpoints = endpoints
       };
 
       // =========================================================
@@ -155,13 +151,13 @@ public class ApiScanService : IApiScanService
         Endpoints = scanSession.Endpoints
               .Select(e => new ApiScanSchema.EndpointResponse
               {
-                EndpointId = e.Id,
-                Path = e.Path,
-                SuggestedMethods = e.Methods
+                Path = e.route,
+                SuggestedMethods = e.methods
               })
               .ToList()
       };
 
+      Console.WriteLine($"Scan {scanId} completed in {stopwatch.Elapsed.TotalSeconds} seconds with {endpoints.Count()} endpoints found.");
       return ServiceResult<ApiScanSchema.ApiScanResultResponse>
           .Ok(response);
     }

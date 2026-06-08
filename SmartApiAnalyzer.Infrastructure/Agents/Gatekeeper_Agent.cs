@@ -5,7 +5,7 @@ using SmartApiAnalyzer.Infrastructure.Agents.Factory;
 using SmartApiAnalyzer.Domain.Constants;
 using Infrastructure.Common;
 using SmartApiAnalyzer.Domain.Entities.Models.Result.AgentServiceResults;
-using SmartApiAnalyzer.Domain.Entities;
+using SmartApiAnalyzer.Domain.Entities.Payload;
 
 namespace SmartApiAnalyzer.Infrastructure.Agents;
 
@@ -37,15 +37,11 @@ public sealed class GateKeeper_Agent : IGateKeeperAgent
 
   public int Priority => (int)AgentType.UrlValidationAndEndpoints;
 
-  public async Task<IAgentResult> ExecuteAsync(
+  public async Task<AgentResult<GateKeeperPayload>> ExecuteAsync(
       GateKeeperIngestedEvent evt,
       CancellationToken ct)
   {
     var sw = Stopwatch.StartNew();
-    var errorPayload = new Dictionary<string, object>
-    {
-      ["InputUrl"] = evt.domainUrl ?? "null"
-    };
 
     try
     {
@@ -55,7 +51,7 @@ public sealed class GateKeeper_Agent : IGateKeeperAgent
 
       if (string.IsNullOrWhiteSpace(rawUrl))
       {
-        return AgentRequestFactory.CriticalStop(
+        return AgentRequestFactory.Ok<GateKeeperPayload>(
             Name,
             "Input URL is required.",
             sw.Elapsed);
@@ -63,7 +59,7 @@ public sealed class GateKeeper_Agent : IGateKeeperAgent
 
       if (!Uri.TryCreate(rawUrl, UriKind.Absolute, out var uri))
       {
-        return AgentRequestFactory.CriticalStop(
+        return AgentRequestFactory.Ok<GateKeeperPayload>(
             Name,
             "Invalid absolute URL.",
             sw.Elapsed);
@@ -71,7 +67,7 @@ public sealed class GateKeeper_Agent : IGateKeeperAgent
 
       if (!IsSupportedScheme(uri))
       {
-        return AgentRequestFactory.CriticalStop(
+        return AgentRequestFactory.Ok<GateKeeperPayload>(
             Name,
             "Only HTTP/HTTPS URLs are supported.",
             sw.Elapsed);
@@ -84,7 +80,7 @@ public sealed class GateKeeper_Agent : IGateKeeperAgent
 
       if (threatResult.IsMalicious)
       {
-        return AgentRequestFactory.CriticalStop(
+        return AgentRequestFactory.Ok<GateKeeperPayload>(
             Name,
             $"Blocked suspicious domain: {uri.Host}",
             sw.Elapsed);
@@ -111,22 +107,22 @@ public sealed class GateKeeper_Agent : IGateKeeperAgent
       var routePayload = routes
           .Select(route => new EndpointRouteDto
           {
-            Route = route,
-            Methods = InferMethods(route)
+            route = route,
+            methods = InferMethods(route)
           })
           .ToList();
 
       var payload =
-          new Dictionary<string, object>
+          new GateKeeperPayload
           {
-            ["BaseUrl"] = $"{uri.Scheme}://{uri.Host}",
-            ["Host"] = uri.Host,
-            ["Scheme"] = uri.Scheme,
-            ["Port"] = uri.Port,
-            ["Endpoints"] = routePayload,
-            ["EndpointCount"] = routePayload.Count,
-            ["ThreatScore"] = threatResult.Score,
-            ["Safe"] = true
+            domainUrl = $"{uri.Scheme}://{uri.Host}",
+            host = uri.Host,
+            scheme = uri.Scheme,
+            port = uri.Port,
+            routesPayload = routePayload,
+            endpointCount = routePayload.Count,
+            threatScore = threatResult.Score,
+            safe = true
           };
 
       return AgentRequestFactory.Ok(
@@ -141,7 +137,7 @@ public sealed class GateKeeper_Agent : IGateKeeperAgent
     }
     catch (Exception ex)
     {
-      return AgentRequestFactory.CriticalStop(
+      return AgentRequestFactory.Ok<GateKeeperPayload>(
           Name,
           $"Unhandled validation error: {ex.Message}",
           sw.Elapsed);
@@ -198,12 +194,3 @@ public sealed class GateKeeper_Agent : IGateKeeperAgent
   }
 }
 
-/// <summary>
-/// Clean downstream transport model.
-/// </summary>
-public sealed class EndpointRouteDto
-{
-  public string Route { get; set; } = default!;
-
-  public List<string> Methods { get; set; } = new();
-}
