@@ -26,7 +26,7 @@ public class AllAgentsPayload
     public bool HasReferrerPolicy { get; set; }
     public bool HasPermPolicy { get; set; }
     public List<string> MissingHeaders { get; set; } = [];
-    public List<string> PresentHeaders { get; set; } = [];
+    public Dictionary<string, string> PresentHeaders { get; set; } = [];
   }
 
   public sealed class SecurityAgentEvaluationAgentPayload
@@ -44,7 +44,7 @@ public class AllAgentsPayload
   {
     public object? Issues { get; set; }
     public double RiskScore { get; set; }
-    public string RiskLevel { get; set; } = string.Empty;
+    public SeverityStatus RiskLevel { get; set; } = SeverityStatus.Low;
   }
 
   public sealed class RedirectAgentPayload
@@ -67,7 +67,7 @@ public class AllAgentsPayload
 
   public sealed class MetricsAgentPayload
   {
-    public long ResponseTimeMs { get; set; }
+    public double ResponseTimeMs { get; set; }
     public int StatusCode { get; set; }
     public bool IsError { get; set; }
     public bool IsClientError { get; set; }
@@ -78,8 +78,8 @@ public class AllAgentsPayload
 
   public sealed class LatencyPerformanceAgentPayload
   {
-    public long LatencyMs { get; set; }
-    public long TtfbMs { get; set; }
+    public double LatencyMs { get; set; }
+    public double TtfbMs { get; set; }
     public int StatusCode { get; set; }
     public string PerformanceGrade { get; set; } = string.Empty;
     public bool TimedOut { get; set; }
@@ -91,7 +91,7 @@ public class AllAgentsPayload
     public bool UsesHttps { get; set; }
     public bool CookieSecure { get; set; }
     public bool CookieHttpOnly { get; set; }
-    public string CookieSameSite { get; set; } = string.Empty;
+    public bool CookieSameSite { get; set; }
     public List<string> MissingHeaders { get; set; } = [];
     public bool ExposedSecretsFound { get; set; }
     public List<string> ExposedSecretTypes { get; set; } = [];
@@ -112,7 +112,7 @@ public class AllAgentsPayload
 
   public sealed class CostAnalysisPayload
   {
-    public long Latency { get; set; }
+    public double Latency { get; set; }
     public int StatusCode { get; set; }
     public double CostScore { get; set; }
     public string CostLevel { get; set; } = string.Empty;

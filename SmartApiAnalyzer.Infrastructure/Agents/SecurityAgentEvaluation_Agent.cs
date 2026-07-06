@@ -79,15 +79,15 @@ public sealed class SecurityAgentEvaluation_Agent : IAgent
                 _ => "Critical Risk"
             };
 
-            var payload = new Dictionary<string, object>
+            var payload = new AllAgentsPayload.SecurityAgentEvaluationAgentPayload
             {
-                ["OverallRiskScore"] = Math.Round(finalScore, 2),
-                ["SecurityGrade"] = grade,
-                ["SecurityPosture"] = posture,
-                ["CriticalIssues"] = criticalCount,
-                ["Warnings"] = warningCount,
-                ["TotalAgentsEvaluated"] = results.Count,
-                ["SynthesizedFindings"] = synthesized
+                OverallRiskScore = Math.Round(finalScore, 2),
+                SecurityGrade = grade,
+                SecurityPosture = posture,
+                CriticalIssues = criticalCount,
+                Warnings = warningCount,
+                TotalAgentsEvaluated = results.Count,
+                SynthesizedFindings = synthesized
             };
 
             return AgentRequestFactory.Ok(

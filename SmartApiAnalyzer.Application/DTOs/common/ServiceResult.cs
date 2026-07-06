@@ -9,6 +9,7 @@ public class ServiceResult<T>
   public bool Success { get; set; }
   public string Message { get; set; } = string.Empty;
   public T? Data { get; set; }
+  public int StatusCode { get; set; }
 
   public static ServiceResult<T> Ok(T data, string message = "Success")
       => new()
@@ -24,5 +25,13 @@ public class ServiceResult<T>
         Success = false,
         Message = message,
         Data = default
+      };
+  public static ServiceResult<T> Confirmed(string message)
+      => new()
+      {
+        Success = false,
+        Message = message,
+        Data = default,
+        StatusCode = 202
       };
 }

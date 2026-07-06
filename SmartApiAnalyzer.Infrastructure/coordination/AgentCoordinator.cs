@@ -34,59 +34,8 @@ public sealed class AgentCoordinator : ICoordinator
     _logger = logger;
   }
 
-  public async Task<PipelineResult> RunAsync(GateKeeperIngestedEvent evt, CancellationToken ct)
-  {
-    ArgumentNullException.ThrowIfNull(evt);
 
-    var results = new List<IAgentResult>();
-    var pipeline = Stopwatch.StartNew();
-
-    _logger.LogInformation(
-        "Pipeline starting for EventId={evt.EventId} TenantId={evt.TenantId} Endpoint={evt.domainUrl}",
-        evt.EventId, evt.TenantId, evt.domainUrl);
-
-    // ── Phase 1: Gatekeeper — always first, always exclusive ──────────
-    if (!_registry.TryGet(AgentType.UrlValidationAndEndpoints.ToSystemName(), out var gatekeeper)
-        || gatekeeper is null)
-    {
-      _logger.LogCritical("Gatekeeper agent is not registered. Pipeline aborted.");
-      return Halted(evt, results, pipeline.Elapsed, "Gatekeeper agent not registered.");
-    }
-
-    var gatekeeperResult = await ExecuteWithTimeoutAsync(gatekeeper, evt, ct);
-    results.Add(gatekeeperResult);
-    MergePayload(evt, gatekeeper.Name, gatekeeperResult);
-
-    await _notifier.NotifyAsync(gatekeeperResult.Message, evt, ct);
-
-    if (gatekeeperResult.StopProcessing)
-    {
-      _logger.LogWarning(
-          "Pipeline halted by gatekeeper. Reason: {gatekeeperResult.Message}", gatekeeperResult.Message);
-
-      return Halted(evt, results, pipeline.Elapsed, gatekeeperResult.Message);
-    }
-
-    _logger.LogInformation("Gatekeeper passed. Executing downstream agents.");
-
-
-    pipeline.Stop();
-
-    _logger.LogInformation(
-        "Pipeline completed for EventId={evt.EventId} in {pipeline.Elapsed.TotalMilliseconds}ms. Agents run: {results.Count}",
-        evt.EventId, pipeline.Elapsed.TotalMilliseconds, results.Count);
-
-    return new PipelineResult
-    {
-      EventId = evt.EventId,
-      TenantId = evt.TenantId,
-      Halted = false,
-      CompletedAt = DateTime.UtcNow,
-      TotalElapsed = pipeline.Elapsed,
-    };
-  }
-
-  public async Task<PipelineResult> ResumeAsync(
+  public async Task<PipelineResult> RunAsync(
       Guid sessionId,
       ApprovalRequest request,
       CancellationToken ct)
@@ -94,26 +43,26 @@ public sealed class AgentCoordinator : ICoordinator
     ArgumentNullException.ThrowIfNull(request);
 
     _logger.LogInformation(
-        "Resuming session {sessionId} with {request.Routes.Count} approved route(s).",
-        sessionId, request.Routes.Count);
+        "Resuming Agent execution session {sessionId} with {request.RoutesAndEndpoints.Count} approved route(s).",
+        sessionId, request.RoutesAndEndpoints.Count);
 
     // ResumeAsync rehydrates a minimal event representing the approved continuation.
     // The endpoint here is intentionally empty — resumed pipelines operate on
     // ApprovedRoutes, not a raw URL. Downstream agents that require NormalizedUri
     // must guard against a null NormalizedUri.
-    var evt = new GateKeeperIngestedEvent(
+    var evt = new UserApprovedScanEvent(
         request.TenantId,
         passedDomainUrl: string.Empty,
+        request.RoutesAndEndpoints,
         statusCode: 200,
         responseTimeMs: 0,
         timestamp: DateTime.UtcNow)
     {
       SessionId = sessionId,
-      ApprovedRoutes = request.Routes.Select(r => r.Route).ToList(),
     };
 
     await _notifier.NotifyAsync(
-        "Session {sessionId}: user approved {request.Routes.Count} route(s). Resuming.",
+        "Session {sessionId}: user approved {request.RoutesAndEndpoints.Count} route(s). Resuming.",
         evt, ct);
 
     return await RunDownstreamOnlyAsync(evt, ct);
@@ -122,7 +71,7 @@ public sealed class AgentCoordinator : ICoordinator
   // ── Private helpers ────────────────────────────────────────────────────────
 
   private async Task<PipelineResult> RunDownstreamOnlyAsync(
-      GateKeeperIngestedEvent evt, CancellationToken ct)
+      UserApprovedScanEvent evt, CancellationToken ct)
   {
     var results = new List<IAgentResult>();
     var pipeline = Stopwatch.StartNew();
@@ -160,7 +109,7 @@ public sealed class AgentCoordinator : ICoordinator
   }
 
   private async Task<IAgentResult> ExecuteWithTimeoutAsync(
-      IAgent agent, GateKeeperIngestedEvent evt, CancellationToken externalCt)
+      IAgent agent, UserApprovedScanEvent evt, CancellationToken externalCt)
   {
     using var linked = CancellationTokenSource.CreateLinkedTokenSource(externalCt);
     linked.CancelAfter(AgentTimeout);
@@ -186,7 +135,7 @@ public sealed class AgentCoordinator : ICoordinator
   }
 
   private static void MergePayload(
-    GateKeeperIngestedEvent evt,
+    UserApprovedScanEvent evt,
     string agentName,
     IAgentResult result)
   {
@@ -208,7 +157,7 @@ public sealed class AgentCoordinator : ICoordinator
   }
 
   private static PipelineResult Halted(
-      GateKeeperIngestedEvent evt,
+      UserApprovedScanEvent evt,
       List<IAgentResult> results,
       TimeSpan elapsed,
       string reason) => new()

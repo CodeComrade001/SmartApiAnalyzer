@@ -2,6 +2,7 @@ using System.Diagnostics;
 using SmartApiAnalyzer.Application.Services.Interface.Agents;
 using SmartApiAnalyzer.Domain.Constants;
 using SmartApiAnalyzer.Domain.Entities.Models.Result.AgentServiceResults;
+using SmartApiAnalyzer.Domain.Enums.Agents;
 using SmartApiAnalyzer.Domain.Events;
 using SmartApiAnalyzer.Infrastructure.Agents.Factory;
 
@@ -30,13 +31,13 @@ public sealed class Security_Agent : IAgent
 
       var riskScore = issues.Count * 25;
 
-      var payload = new Dictionary<string, object>
+      var payload = new AllAgentsPayload.SecurityAgentPayload
       {
-        ["Issues"] = issues,
-        ["RiskScore"] = riskScore,
-        ["RiskLevel"] =
-            riskScore < 25 ? "LOW" :
-            riskScore < 75 ? "MEDIUM" : "HIGH"
+        Issues = issues,
+        RiskScore = riskScore,
+        RiskLevel =
+            riskScore < 25 ? SeverityStatus.Low :
+            riskScore < 75 ? SeverityStatus.Medium : SeverityStatus.High
       };
 
       return AgentRequestFactory.Ok(

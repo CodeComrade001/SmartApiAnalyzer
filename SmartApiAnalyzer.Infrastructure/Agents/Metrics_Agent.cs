@@ -48,15 +48,15 @@ public sealed class Metrics_Agent : IAgent
                 _ => "Healthy"
             };
 
-            var payload = new Dictionary<string, object>
+            var payload = new AllAgentsPayload.MetricsAgentPayload
             {
-                ["ResponseTimeMs"] = responseTime,
-                ["StatusCode"] = statusCode,
-                ["IsError"] = isError,
-                ["IsClientError"] = isClientError,
-                ["IsServerError"] = isServerError,
-                ["PerformanceGrade"] = grade,
-                ["HealthStatus"] = healthStatus
+                ResponseTimeMs = responseTime,
+                StatusCode = statusCode,
+                IsError = isError,
+                IsClientError = isClientError,
+                IsServerError = isServerError,
+                PerformanceGrade = grade,
+                HealthStatus = healthStatus
             };
 
             return AgentRequestFactory.Ok(

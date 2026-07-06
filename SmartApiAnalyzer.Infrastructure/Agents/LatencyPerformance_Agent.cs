@@ -38,13 +38,13 @@ public sealed class LatencyPerformance_Agent : IAgent
 
             var result = await _service.AnalyzeAsync(uri, ct);
 
-            var payload = new Dictionary<string, object>
+            var payload = new AllAgentsPayload.LatencyPerformanceAgentPayload
             {
-                ["LatencyMs"] = result.LatencyMs,
-                ["TtfbMs"] = result.TtfbMs,
-                ["StatusCode"] = result.StatusCode,
-                ["PerformanceGrade"] = result.Grade,
-                ["TimedOut"] = result.TimedOut,
+                LatencyMs = result.LatencyMs,
+                TtfbMs = result.TtfbMs,
+                StatusCode = result.StatusCode,
+                PerformanceGrade = result.Grade,
+                TimedOut = result.TimedOut,
             };
 
             if (result.TimedOut)

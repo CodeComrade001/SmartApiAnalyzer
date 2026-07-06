@@ -10,6 +10,6 @@ public interface IAgent
   int Priority { get; }
 
   Task<IAgentResult> ExecuteAsync(
-      GateKeeperIngestedEvent evt,
+      UserApprovedScanEvent evt,
       CancellationToken ct);
 }

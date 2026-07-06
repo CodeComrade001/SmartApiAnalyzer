@@ -15,4 +15,8 @@ public interface IApiScanService
           );
   Task<ServiceResult<List<ApiScanSchema.ApiScanResultResponse>>> GetAllAsync();
   Task<ServiceResult<ApiScanSchema.ApiScanResultResponse>> GetByIdAsync(Guid id);
+  Task<ServiceResult<ApiScanSchema.defaultApiResponse>> UpdateUrlEndpointsAsync(Guid id, ApiScanSchema.UpdateUrlEndpointsRequest request, CancellationToken ct);
+
+  // this endpoint return response is not known yet, so we will use the defaultApiResponse as a placeholder for now.
+  Task<ServiceResult<ApiScanSchema.AgentScanResponse>> StartApiScanExecutionAsync(ApiScanSchema.StartApiScanExecutionRequest request, CancellationToken ct);
 }
