@@ -36,20 +36,20 @@ public sealed class RedirectChain_Agent : IAgent
 
             var result = await _service.AnalyzeAsync(uri, ct);
 
-            var payload = new Dictionary<string, object>
+            var payload = new AllAgentsPayload.RedirectAgentPayload
             {
-                ["EnforcesHttps"] = result.EnforcesHttps,
-                ["HasLoop"] = result.HasRedirectLoop,
-                ["LandsOnHttp"] = result.LandsOnHttp,
-                ["HopCount"] = result.HopCount,
-                ["FinalUrl"] = result.FinalUrl,
-                ["Hops"] = result.Hops.Select(h => new
+                EnforcesHttps = result.EnforcesHttps,
+                HasLoop = result.HasRedirectLoop,
+                LandsOnHttp = result.LandsOnHttp,
+                HopCount = result.HopCount,
+                FinalUrl = result.FinalUrl,
+                Hops = result.Hops.ConvertAll(h => new AllAgentsPayload.RedirectHopPayload
                 {
-                    h.Step,
-                    h.FromUrl,
-                    h.ToUrl,
-                    h.StatusCode
-                }).ToList<object>(),
+                    Step = h.Step,
+                    FromUrl = h.FromUrl,
+                    ToUrl = h.ToUrl,
+                    StatusCode = h.StatusCode
+                }),
             };
 
             if (result.HasRedirectLoop)

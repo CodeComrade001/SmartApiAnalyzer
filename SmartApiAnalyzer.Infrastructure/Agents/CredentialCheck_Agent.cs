@@ -36,17 +36,17 @@ public sealed class CredentialCheck_Agent : IAgent
 
             var result = await _service.AnalyzeAsync(uri, ct);
 
-            var payload = new Dictionary<string, object>
+            var payload = new AllAgentsPayload.CredentialCheckAgentPayload
             {
-                ["HasLoginForm"] = result.HasLoginForm,
-                ["UsesHttps"] = result.UsesHttps,
-                ["CookieSecure"] = result.CookieSecure,
-                ["CookieHttpOnly"] = result.CookieHttpOnly,
-                ["CookieSameSite"] = result.CookieSameSite,
-                ["MissingHeaders"] = result.MissingHeaders,
-                ["ExposedSecretsFound"] = result.ExposedSecretsFound,
-                ["ExposedSecretTypes"] = result.ExposedSecretTypes,
-                ["RiskScore"] = result.RiskScore,
+                HasLoginForm = result.HasLoginForm,
+                UsesHttps = result.UsesHttps,
+                CookieSecure = result.CookieSecure,
+                CookieHttpOnly = result.CookieHttpOnly,
+                CookieSameSite = result.CookieSameSite,
+                MissingHeaders = result.MissingHeaders,
+                ExposedSecretsFound = result.ExposedSecretsFound,
+                ExposedSecretTypes = result.ExposedSecretTypes,
+                RiskScore = result.RiskScore,
             };
 
             if (result.IsCriticalRisk)

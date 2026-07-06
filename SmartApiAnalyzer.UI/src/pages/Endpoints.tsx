@@ -32,6 +32,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { ApiEndpoint, WebsiteApiGroup } from "@/types";
 import { mockWebsiteApis } from "@/services/data/mockData";
+import { UpdateEndpointPayload } from "@/api/endpoints/logs";
 
 /* ─── constants ─── */
 const HTTP_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
@@ -99,6 +100,7 @@ export default function ApiDiscovery() {
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [isDiscovering, setIsDiscovering] = useState(false);
   const [websiteGroups, setWebsiteGroups] = useState<WebsiteApiGroup[]>(mockWebsiteApis);
+  const [apiUpdateEndpointPayload, setApiUpdateEndpointPayload] = useState<UpdateEndpointPayload>({ scanId: "", routesAndEndpoints: [] });
 
   /* search filter */
   const filteredWebsites = useMemo(() => {
@@ -241,8 +243,8 @@ export default function ApiDiscovery() {
   };
 
   /* save (wired to console — replace with real call later) */
-  const handleSave = (websiteId: string) => {
-    const website = websiteGroups.find((w) => w.id === websiteId);
+  const handleSave = (website: WebsiteApiGroup) => {
+    // const website = websiteGroups.find((w) => w.id === websiteId);
     console.log("Saving website APIs", website);
   };
 
@@ -338,7 +340,7 @@ export default function ApiDiscovery() {
                       <Plus className="mr-2 h-4 w-4" />
                       Add Endpoint
                     </Button>
-                    <Button size="sm" onClick={() => handleSave(website.id)}>
+                    <Button size="sm" onClick={() => handleSave(website)}>
                       <Save className="mr-2 h-4 w-4" />
                       Save APIs
                     </Button>

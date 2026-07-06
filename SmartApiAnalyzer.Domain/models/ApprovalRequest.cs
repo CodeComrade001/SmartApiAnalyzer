@@ -7,5 +7,5 @@ public sealed class ApprovalRequest
 {
   public Guid TenantId { get; set; }
 
-  public List<RouteInputDto> Routes { get; set; } = new();
+  public List<RouteInputDto> RoutesAndEndpoints { get; set; } = new();
 }

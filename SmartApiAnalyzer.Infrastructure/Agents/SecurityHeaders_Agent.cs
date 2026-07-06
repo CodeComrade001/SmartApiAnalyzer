@@ -38,18 +38,18 @@ public sealed class SecurityHeaders_Agent : IAgent
 
             var result = await _service.AnalyzeAsync(uri, ct);
 
-            var payload = new Dictionary<string, object>
+            var payload = new AllAgentsPayload.SecurityHeaderAgentPayload
             {
-                ["Score"] = result.Score,
-                ["Grade"] = result.Grade,
-                ["HasHsts"] = result.HasHsts,
-                ["HasCsp"] = result.HasCsp,
-                ["HasXFrameOptions"] = result.HasXFrameOptions,
-                ["HasXContentType"] = result.HasXContentTypeOpts,
-                ["HasReferrerPolicy"] = result.HasReferrerPolicy,
-                ["HasPermPolicy"] = result.HasPermissionsPolicy,
-                ["MissingHeaders"] = result.MissingHeaders,
-                ["PresentHeaders"] = result.PresentHeaders,
+                Score = result.Score,
+                Grade = result.Grade,
+                HasHsts = result.HasHsts,
+                HasCsp = result.HasCsp,
+                HasXFrameOptions = result.HasXFrameOptions,
+                HasXContentType = result.HasXContentTypeOpts,
+                HasReferrerPolicy = result.HasReferrerPolicy,
+                HasPermPolicy = result.HasPermissionsPolicy,
+                MissingHeaders = result.MissingHeaders,
+                PresentHeaders = result.PresentHeaders,
             };
 
             if (result.IsCritical)

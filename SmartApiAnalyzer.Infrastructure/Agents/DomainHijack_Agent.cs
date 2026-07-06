@@ -37,16 +37,16 @@ public sealed class DomainHijack_Agent : IAgent
 
             var result = await _service.AnalyzeAsync(uri, ct);
 
-            var payload = new Dictionary<string, object>
+            var payload = new AllAgentsPayload.DomainHijackAgentPayload
             {
-                ["IsVulnerable"] = result.IsVulnerable,
-                ["HasDanglingCname"] = result.HasDanglingCname,
-                ["HasSubdomainTakeover"] = result.HasSubdomainTakeover,
-                ["NsLookupFailed"] = result.NsLookupFailed,
-                ["CnameTarget"] = result.CnameTarget ?? "none",
-                ["VulnerableProvider"] = result.VulnerableProvider ?? "none",
-                ["DetectedSignals"] = result.DetectedSignals,
-                ["Summary"] = result.Summary,
+                IsVulnerable = result.IsVulnerable,
+                HasDanglingCname = result.HasDanglingCname,
+                HasSubdomainTakeover = result.HasSubdomainTakeover,
+                NsLookupFailed = result.NsLookupFailed,
+                CnameTarget = result.CnameTarget ?? "none",
+                VulnerableProvider = result.VulnerableProvider ?? "none",
+                DetectedSignals = result.DetectedSignals,
+                Summary = result.Summary,
             };
 
             if (result.IsVulnerable)

@@ -6,6 +6,5 @@ namespace SmartApiAnalyzer.Application.Services.Interface.Events;
 
 public interface ICoordinator
 {
-  Task<PipelineResult> RunAsync(GateKeeperIngestedEvent evt, CancellationToken ct);
-  Task<PipelineResult> ResumeAsync(Guid sessionId, ApprovalRequest request, CancellationToken ct);
+  Task<PipelineResult> RunAsync(Guid sessionId, ApprovalRequest evt, CancellationToken ct);
 }

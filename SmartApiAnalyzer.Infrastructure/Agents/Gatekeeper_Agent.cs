@@ -65,13 +65,13 @@ public sealed class GateKeeper_Agent : IGateKeeperAgent
             sw.Elapsed);
       }
 
-      if (!IsSupportedScheme(uri))
-      {
-        return AgentRequestFactory.Ok<GateKeeperPayload>(
-            Name,
-            "Only HTTP/HTTPS URLs are supported.",
-            sw.Elapsed);
-      }
+      // if (!IsSupportedScheme(uri))
+      // {
+      //   return AgentRequestFactory.Ok<GateKeeperPayload>(
+      //       Name,
+      //       "Only HTTP/HTTPS URLs are supported.",
+      //       sw.Elapsed);
+      // }
 
       // Threat intelligence scan
       AppLogger.Log("Threat scan starting...");

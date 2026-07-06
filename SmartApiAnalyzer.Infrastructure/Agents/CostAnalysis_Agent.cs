@@ -27,12 +27,12 @@ public sealed class CostAnalysis_Agent : IAgent
           (latency * 0.6) +
           (status >= 400 ? 50 : 0);
 
-      var payload = new Dictionary<string, object>
+      var payload = new AllAgentsPayload.CostAnalysisPayload
       {
-        ["Latency"] = latency,
-        ["StatusCode"] = status,
-        ["CostScore"] = costScore,
-        ["CostLevel"] =
+        Latency = latency,
+        StatusCode = status,
+        CostScore = costScore,
+        CostLevel =
             costScore < 200 ? "LOW" :
             costScore < 500 ? "MEDIUM" : "HIGH"
       };

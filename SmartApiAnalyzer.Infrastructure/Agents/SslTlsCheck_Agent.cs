@@ -72,7 +72,7 @@ public sealed class SslTlsCheck_Agent : IAgent
             {
                 return AgentRequestFactory.Warning(
                     Name,
-                    $"Certificate expires in {result.DaysUntilExpiry} day(s). Renewal required.",
+                    "Certificate expires in {result.DaysUntilExpiry} day(s). Renewal required.",
                     sw.Elapsed, payload);
             }
 

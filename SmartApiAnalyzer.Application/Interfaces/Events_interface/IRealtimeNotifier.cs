@@ -7,6 +7,6 @@ public interface IRealtimeNotifier
 {
   Task NotifyAsync(
       string message,
-      GateKeeperIngestedEvent? evt = null,
+      UserApprovedScanEvent? evt = null,
       CancellationToken ct = default);
 }

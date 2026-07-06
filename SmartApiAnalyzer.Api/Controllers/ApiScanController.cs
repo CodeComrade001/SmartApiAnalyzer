@@ -6,7 +6,7 @@ using Application.DTOs.ApiScan;
 namespace Api.Controllers;
 
 [ApiController]
-[Route("api/v1/scans")]
+[Route("api/v1")]
 public class ApiScanController : ControllerBase
 {
     private readonly IApiScanService _ApiScanService;
@@ -31,7 +31,7 @@ public class ApiScanController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAll([FromQuery] PaginationRequest request)
+    public async Task<IActionResult> GetAllDomain([FromQuery] PaginationRequest request)
     {
         var result = await _ApiScanService.GetAllAsync();
 
@@ -48,6 +48,35 @@ public class ApiScanController : ControllerBase
             return BadRequest("Invalid Id");
 
         var result = await _ApiScanService.GetByIdAsync(id);
+
+        if (!result.Success)
+            return NotFound(result);
+
+        return Ok(result);
+    }
+
+    [HttpPatch("update-endpoint")]
+    public async Task<IActionResult> UpdateUrlEndpoints(ApiScanSchema.UpdateUrlEndpointsRequest request, CancellationToken ct)
+    {
+        if (request.ScanId == Guid.Empty)
+            return BadRequest("Invalid Id");
+
+
+        var result = await _ApiScanService.UpdateUrlEndpointsAsync(request.ScanId, request, ct);
+
+        if (!result.Success)
+            return NotFound(result);
+
+        return Ok(result);
+    }
+
+    [HttpPost("start-scan")]
+    public async Task<IActionResult> UrlExecutionButton(ApiScanSchema.StartApiScanExecutionRequest request, CancellationToken ct)
+    {
+        if (request.ScanId == Guid.Empty)
+            return BadRequest("Invalid Id");
+
+        var result = await _ApiScanService.StartApiScanExecutionAsync(request, ct);
 
         if (!result.Success)
             return NotFound(result);

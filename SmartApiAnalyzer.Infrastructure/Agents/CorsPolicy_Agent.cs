@@ -36,17 +36,17 @@ public sealed class CorsPolicy_Agent : IAgent
 
             var result = await _service.AnalyzeAsync(uri, ct);
 
-            var payload = new Dictionary<string, object>
+            var payload = new AllAgentsPayload.CorsPolicyAgentPayload
             {
-                ["AllowsWildcard"] = result.AllowsWildcardOrigin,
-                ["AllowsCredentials"] = result.AllowsCredentials,
-                ["WildcardWithCredentials"] = result.WildcardWithCredentials,
-                ["ReflectsArbitraryOrigin"] = result.ReflectsArbitraryOrigin,
-                ["AllowOriginHeader"] = result.AllowOriginHeader,
-                ["AllowMethodsHeader"] = result.AllowMethodsHeader,
-                ["AllowHeadersHeader"] = result.AllowHeadersHeader,
-                ["IsMisconfigured"] = result.IsMisconfigured,
-                ["Summary"] = result.Summary,
+                AllowsWildcard = result.AllowsWildcardOrigin,
+                AllowsCredentials = result.AllowsCredentials,
+                WildcardWithCredentials = result.WildcardWithCredentials,
+                ReflectsArbitraryOrigin = result.ReflectsArbitraryOrigin,
+                AllowOriginHeader = result.AllowOriginHeader,
+                AllowMethodsHeader = result.AllowMethodsHeader,
+                AllowHeadersHeader = result.AllowHeadersHeader,
+                IsMisconfigured = result.IsMisconfigured,
+                Summary = result.Summary,
             };
 
             // Wildcard + credentials is a P0 vulnerability — stop processing
