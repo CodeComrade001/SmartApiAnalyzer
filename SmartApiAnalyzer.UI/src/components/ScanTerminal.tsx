@@ -9,36 +9,36 @@ import { Button } from "@/components/ui/button";
 
 /* ─── helpers ─── */
 const LOG_COLORS = {
-  info:    "text-slate-400",
+  info: "text-slate-400",
   success: "text-emerald-400",
   warning: "text-amber-400",
-  error:   "text-pink-400",
+  error: "text-pink-400",
 } as const;
 
 const LOG_PREFIXES = {
-  info:    "·",
+  info: "·",
   success: "✓",
   warning: "!",
-  error:   "✗",
+  error: "✗",
 } as const;
 
 function AgentStatusIcon({ status }: { status: "pending" | "running" | FindingSeverity }) {
   if (status === "pending") return <Circle className="h-3.5 w-3.5 text-slate-600" />;
   if (status === "running") return <Loader2 className="h-3.5 w-3.5 animate-spin text-cyan-400" />;
-  if (status === "PASS")    return <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />;
+  if (status === "PASS") return <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />;
   if (status === "CRITICAL") return <AlertTriangle className="h-3.5 w-3.5 text-pink-400" />;
-  if (status === "HIGH")    return <AlertCircle className="h-3.5 w-3.5 text-amber-400" />;
-  if (status === "MEDIUM")  return <Info className="h-3.5 w-3.5 text-cyan-400" />;
+  if (status === "HIGH") return <AlertCircle className="h-3.5 w-3.5 text-amber-400" />;
+  if (status === "MEDIUM") return <Info className="h-3.5 w-3.5 text-cyan-400" />;
   return <Info className="h-3.5 w-3.5 text-slate-500" />;  // LOW
 }
 
 function agentStatusColor(status: "pending" | "running" | FindingSeverity): string {
-  if (status === "pending")  return "text-slate-500";
-  if (status === "running")  return "text-cyan-400";
-  if (status === "PASS")     return "text-emerald-400";
+  if (status === "pending") return "text-slate-500";
+  if (status === "running") return "text-cyan-400";
+  if (status === "PASS") return "text-emerald-400";
   if (status === "CRITICAL") return "text-pink-400";
-  if (status === "HIGH")     return "text-amber-400";
-  if (status === "MEDIUM")   return "text-cyan-300";
+  if (status === "HIGH") return "text-amber-400";
+  if (status === "MEDIUM") return "text-cyan-300";
   return "text-slate-400";
 }
 
@@ -154,6 +154,7 @@ export function ScanTerminal() {
               )}
 
               <button
+                title="Close"
                 onClick={() => { setShowTerminal(false); setCountdown(null); }}
                 className="ml-auto flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-700/50 hover:text-slate-200"
               >
@@ -184,9 +185,8 @@ export function ScanTerminal() {
                           return (
                             <div
                               key={agent.key}
-                              className={`flex items-center gap-2 rounded-lg px-2 py-1.5 transition ${
-                                status === "running" ? "bg-cyan-500/10" : ""
-                              }`}
+                              className={`flex items-center gap-2 rounded-lg px-2 py-1.5 transition ${status === "running" ? "bg-cyan-500/10" : ""
+                                }`}
                             >
                               <AgentStatusIcon status={status} />
                               <span className={`truncate font-mono text-[10px] ${agentStatusColor(status)}`}>

@@ -18,6 +18,8 @@ import {
   AGENTS, PRESETS, categoryMeta, presetColorMap, severityConfig, MOCK_RESULTS,
 } from "@/data/agentCatalog";
 import type { AgentKey, AgentCategory, FindingSeverity } from "@/data/agentCatalog";
+import { scanInitiationSwitch, ScanInitiationSwitchPayload } from "@/api/endpoints/logs";
+import { WebsiteApiGroup } from "@/types";
 
 /* ─── constants ─── */
 const HTTP_METHOD_COLORS: Record<string, string> = {
@@ -66,11 +68,14 @@ export default function AgentsPage() {
     setLastScanResults, setLastScanMeta,
     scanProgressValue,
   } = useScan();
+  console.log("Turbo Log  ~ AgentsPage ~ scanTargets:", scanTargets);
 
   const [customUrl, setCustomUrl] = useState("");
   const [expandedSites, setExpandedSites] = useState<Set<string>>(new Set());
   const [scanState, setScanState] = useState<"idle" | "scanning" | "done">("idle");
   const [progressLabel, setProgressLabel] = useState("");
+  const [selectedWebsite, setSelectedWebsite] = useState<WebsiteApiGroup[]>(mockWebsiteApis);
+  console.log("Turbo Log  ~ AgentsPage ~ selectedWebsite:", selectedWebsite);
 
   /* ── helpers ── */
   const toggleSiteExpanded = (id: string) => {
@@ -81,39 +86,40 @@ export default function AgentsPage() {
     });
   };
 
-  const getEndpointUrl = (ep: { inferredPath: string; correctedPath?: string }) =>
-    ep.correctedPath?.trim() || ep.inferredPath;
+  // const getEndpointUrl = (ep: { inferredPath: string; correctedPath?: string }) =>
+  //   ep.correctedPath?.trim() || ep.inferredPath;
 
-  const getSiteTargetCount = (siteId: string) => {
-    const site = mockWebsiteApis.find((s) => s.id === siteId);
-    if (!site) return 0;
-    return site.endpoints.filter((ep) => scanTargets.includes(getEndpointUrl(ep))).length;
+  const getSiteTargetCount = (site: WebsiteApiGroup) => {
+    const isSiteAvailable = mockWebsiteApis.find((s) => s.id === site.id);
+    if (!isSiteAvailable) return 0;
+    return site.endpoints.filter((ep) => scanTargets.some((t) => t.websiteUrl === site.websiteUrl)).length;
   };
 
-  const toggleAllFromSite = (siteId: string) => {
-    const site = mockWebsiteApis.find((s) => s.id === siteId);
-    if (!site) return;
-    const urls = site.endpoints.map(getEndpointUrl).filter(Boolean);
-    const allSelected = urls.every((u) => scanTargets.includes(u));
-    if (allSelected) urls.forEach(removeScanTarget);
-    else urls.forEach(addScanTarget);
+  const toggleAllFromSite = (site: WebsiteApiGroup) => {
+    const siteAvailability = mockWebsiteApis.find((s) => s.id === site.id);
+    if (!siteAvailability) return;
+    const urls = site.endpoints.map((ep) => ep.correctedPath || ep.inferredPath).filter(Boolean);
+    // Determine if the site is already selected (by id)
+    const allSelected = scanTargets.some((t) => t.id === site.id);
+    if (allSelected) removeScanTarget(site);
+    else addScanTarget(site);
   };
 
-  const handleAddCustomUrl = () => {
-    const url = customUrl.trim();
-    if (!url) return;
-    if (!url.startsWith("http://") && !url.startsWith("https://")) {
-      notify({ type: "error", title: "Invalid URL format", message: `"${url}" must start with http:// or https://.` });
-      return;
-    }
-    if (scanTargets.includes(url)) {
-      notify({ type: "warning", title: "Already in Mission Brief", message: `${url} is already a scan target.` });
-      return;
-    }
-    addScanTarget(url);
-    setCustomUrl("");
-    notify({ type: "success", title: "Target added", message: `${url} added to your Mission Brief scan targets.` });
-  };
+  // const handleAddCustomUrl = () => {
+  //   const url = customUrl.trim();
+  //   if (!url) return;
+  //   if (!url.startsWith("http://") && !url.startsWith("https://")) {
+  //     notify({ type: "error", title: "Invalid URL format", message: `"${url}" must start with http:// or https://.` });
+  //     return;
+  //   }
+  //   if (scanTargets.includes(url)) {
+  //     notify({ type: "warning", title: "Already in Mission Brief", message: `${url} is already a scan target.` });
+  //     return;
+  //   }
+  //   addScanTarget(url);
+  //   setCustomUrl("");
+  //   notify({ type: "success", title: "Target added", message: `${url} added to your Mission Brief scan targets.` });
+  // };
 
   const handlePresetClick = (preset: typeof PRESETS[number]) => {
     setActivePreset(preset.id);
@@ -132,101 +138,107 @@ export default function AgentsPage() {
   /* ── launch scan ── */
   const handleRunScan = async () => {
     if (scanTargets.length === 0) {
-      notify({ type: "error", title: "No scan targets set", message: "Select at least one endpoint from a saved website or add a custom URL in section 01.", action: { label: "Jump to targets", href: "/dashboard/agents" } });
+      notify({
+        type: "error",
+        title: "No scan targets set",
+        message:
+          "Select at least one endpoint from a saved website or add a custom URL in section 01.",
+        action: {
+          label: "Jump to targets",
+          href: "/dashboard/agents",
+        },
+      });
       return;
     }
+
     if (selectedAgents.size === 0) {
-      notify({ type: "error", title: "No agents selected", message: "Select at least one agent in section 02 before launching.", action: { label: "Select agents", href: "/dashboard/agents" } });
+      notify({
+        type: "error",
+        title: "No agents selected",
+        message:
+          "Select at least one agent in section 02 before launching.",
+        action: {
+          label: "Select agents",
+          href: "/dashboard/agents",
+        },
+      });
       return;
     }
 
-    setScanState("scanning");
-    setScanProgressValue(0);
+    try {
+      setScanState("scanning");
+      setScanProgressValue(0);
 
-    /* open terminal overlay */
-    clearScanLogs();
-    setShowTerminal(true);
-    setIsScanRunning(true);
+      // Open terminal
+      clearScanLogs();
+      setShowTerminal(true);
+      setIsScanRunning(true);
 
-    const agentsToRun = AGENTS.filter((a) => selectedAgents.has(a.key));
+      const agentsToRun = AGENTS.filter((agent) =>
+        selectedAgents.has(agent.key)
+      );
 
-    /* init all agents as pending */
-    const initStatuses: Record<string, "pending"> = {};
-    agentsToRun.forEach((a) => { initStatuses[a.key] = "pending"; });
-    setAgentScanStatuses(initStatuses as any);
+      // Initialize all selected agents as pending
+      const initStatuses: Record<string, "pending"> = {};
 
-    /* notify scan started */
-    notify({
-      type: "info",
-      title: "Scan launched",
-      message: `Running ${agentsToRun.length} agent${agentsToRun.length !== 1 ? "s" : ""} against ${scanTargets.length} target${scanTargets.length !== 1 ? "s" : ""}. Watch the live terminal for progress.`,
-    });
+      agentsToRun.forEach((agent) => {
+        initStatuses[agent.key] = "pending";
+      });
 
-    const results: Array<{
-      agentKey: string; agentLabel: string; category: AgentCategory;
-      status: FindingSeverity; findings: number; detail: string;
-    }> = [];
-    let totalSimDuration = 0;
+      setAgentScanStatuses(initStatuses as any);
 
-    for (let i = 0; i < agentsToRun.length; i++) {
-      const agent = agentsToRun[i];
-      setProgressLabel(agent.label);
-      setCurrentScanAgentKey(agent.key);
-      setAgentScanStatuses((prev) => ({ ...prev, [agent.key]: "running" }));
+      notify({
+        type: "info",
+        title: "Scan launched",
+        message: `Launching ${agentsToRun.length} agent${agentsToRun.length !== 1 ? "s" : ""
+          } against ${scanTargets.length} target${scanTargets.length !== 1 ? "s" : ""
+          }. Waiting for the scan engine to accept the request.`,
+      });
 
-      /* look up mock payload for this agent */
-      const payload = mockScanPayload.agentResults.find((r) => r.agentKey === agent.key);
+      scanTargets.map((site) => {
 
-      if (payload) {
-        const logs = payload.logs;
-        addScanLog({ agentKey: agent.key, agentLabel: agent.label, category: agent.category, level: logs[0].level, message: logs[0].message });
-        for (let j = 1; j < logs.length; j++) {
-          const delay = Math.min(Math.round((logs[j].ts - logs[j - 1].ts) / 4), 320);
-          await new Promise((r) => setTimeout(r, delay));
-          addScanLog({ agentKey: agent.key, agentLabel: agent.label, category: agent.category, level: logs[j].level, message: logs[j].message });
-        }
-        totalSimDuration += Math.round(payload.duration / 4);
+      })
 
-        const mockResult = MOCK_RESULTS.find((r) => r.agent === agent.key as AgentKey);
-        const status: FindingSeverity = mockResult?.status ?? "PASS";
-        setAgentScanStatuses((prev) => ({ ...prev, [agent.key]: status }));
-        results.push({ agentKey: agent.key, agentLabel: agent.label, category: agent.category, status, findings: mockResult?.findings ?? 0, detail: mockResult?.detail ?? "No issues found." });
-      } else {
-        /* generic fallback for agents not in payload */
-        addScanLog({ agentKey: agent.key, agentLabel: agent.label, category: agent.category, level: "info", message: `Running ${agent.label}...` });
-        await new Promise((r) => setTimeout(r, 280 + Math.random() * 160));
-        addScanLog({ agentKey: agent.key, agentLabel: agent.label, category: agent.category, level: "success", message: "Check passed" });
-        totalSimDuration += 300;
-        setAgentScanStatuses((prev) => ({ ...prev, [agent.key]: "PASS" }));
-        results.push({ agentKey: agent.key, agentLabel: agent.label, category: agent.category, status: "PASS", findings: 0, detail: "No issues found." });
-      }
+      const payload: ScanInitiationSwitchPayload = {
+        domainUrl: "", // Replace with your selected domain
+        scanRequest: false,
+        routesAndEndpoints: [],
+        agents: [],
+      };
 
-      setScanProgressValue(Math.round(((i + 1) / agentsToRun.length) * 100));
+      // const response = await scanInitiationSwitch(payload);
+
+      // Save scan id if returned
+      // if (response.scanId) {
+      //   setCurrentScanId(response.scanId);
+      // }
+
+      notify({
+        type: "success",
+        title: "Scan accepted",
+        message:
+          "The scan request has been accepted. Waiting for live progress updates.",
+      });
+
+      // Start your SignalR/WebSocket/SSE/Polling here
+      // await startMonitoringScan(response.scanId);
+
+    } catch (error: any) {
+      console.error(error);
+
+      setScanState("idle");
+      setIsScanRunning(false);
+      setCurrentScanAgentKey("");
+
+      notify({
+        type: "error",
+        title: "Unable to start scan",
+        message:
+          error?.response?.data?.message ??
+          error?.message ??
+          "An unexpected error occurred while starting the scan.",
+      });
     }
-
-    /* complete */
-    setCurrentScanAgentKey("");
-    setIsScanRunning(false);
-    setScanState("done");
-
-    const meta: LastScanMeta = {
-      targets: scanTargets,
-      completedAt: new Date().toISOString(),
-      totalAgents: agentsToRun.length,
-      duration: totalSimDuration,
-    };
-    setLastScanResults(results);
-    setLastScanMeta(meta);
-
-    const critCount = results.filter((r) => r.status === "CRITICAL").length;
-    const highCount = results.filter((r) => r.status === "HIGH").length;
-
-    notify({
-      type: critCount > 0 || highCount > 0 ? "warning" : "success",
-      title: "Scan complete — navigating to Insights",
-      message: `${results.length} agents ran against ${scanTargets.length} target${scanTargets.length !== 1 ? "s" : ""}. Found ${critCount} critical and ${highCount} high-severity issues. Full report in Insights.`,
-      action: { label: "View report", href: "/dashboard/insights" },
-    });
   };
 
   const canScan = scanTargets.length > 0 && selectedAgents.size > 0 && scanState !== "scanning";
@@ -246,9 +258,9 @@ export default function AgentsPage() {
           <p className="mt-1 text-muted-foreground">Pick specific endpoints, choose your agents, and launch a security or performance scan.</p>
         </div>
         <div className="flex items-center gap-2">
-          {scanTargets.length > 0 && (
+          {selectedWebsite.length > 0 && (
             <Badge variant="outline" className="gap-1.5 border-cyan-500/40 text-cyan-400">
-              <Globe className="h-3 w-3" />{scanTargets.length} target{scanTargets.length !== 1 ? "s" : ""}
+              <Globe className="h-3 w-3" />{selectedWebsite.length} target{selectedWebsite.length !== 1 ? "s" : ""}
             </Badge>
           )}
           {selectedAgents.size > 0 && (
@@ -269,7 +281,7 @@ export default function AgentsPage() {
         number="01" title="Target Endpoints"
         subtitle="Select specific endpoints from saved websites, or add a custom URL to scan."
         extra={
-          scanTargets.length > 0 ? (
+          selectedWebsite.length > 0 ? (
             <button onClick={clearScanTargets} className="text-[11px] text-muted-foreground underline underline-offset-2 hover:text-foreground">
               clear all targets
             </button>
@@ -283,13 +295,14 @@ export default function AgentsPage() {
               <div>
                 <p className="mb-2.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Saved websites</p>
                 <div className="space-y-2">
-                  {mockWebsiteApis.map((site) => {
+                  {selectedWebsite.map((site) => {
                     const isExpanded = expandedSites.has(site.id);
-                    const selectedCount = getSiteTargetCount(site.id);
+                    const selectedCount = getSiteTargetCount(site);
                     const totalCount = site.endpoints.length;
+                    const eachSite = site
                     const allSelected = selectedCount === totalCount && totalCount > 0;
                     return (
-                      <div key={site.id} className="rounded-xl border border-border/50 overflow-hidden">
+                      <div key={`${site.id} + ${site.websiteUrl}`} className="rounded-xl border border-border/50 overflow-hidden">
                         <div className="flex items-center gap-3 bg-muted/10 px-4 py-3">
                           <button onClick={() => toggleSiteExpanded(site.id)} className="flex flex-1 items-center gap-2 text-left">
                             <Link2 className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
@@ -299,7 +312,7 @@ export default function AgentsPage() {
                             </Badge>
                             <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isExpanded ? "rotate-180" : ""}`} />
                           </button>
-                          <button onClick={() => toggleAllFromSite(site.id)}
+                          <button onClick={() => toggleAllFromSite(site)}
                             className={`shrink-0 text-[10px] font-medium transition underline underline-offset-2 ${allSelected ? "text-pink-400 hover:text-pink-300" : "text-cyan-400 hover:text-cyan-300"}`}>
                             {allSelected ? "Deselect all" : "Select all"}
                           </button>
@@ -310,13 +323,13 @@ export default function AgentsPage() {
                               exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.22 }} className="overflow-hidden">
                               <div className="divide-y divide-border/30 px-4 pb-2 pt-1">
                                 {site.endpoints.map((ep) => {
-                                  const url = getEndpointUrl(ep);
-                                  const isSelected = scanTargets.includes(url);
+                                  // const url = getEndpointUrl(ep);
+                                  const isSelected = scanTargets.some((t) => t.websiteUrl == eachSite.websiteUrl);
                                   return (
-                                    <label key={ep.id} className="flex cursor-pointer items-center gap-3 py-2.5 transition hover:text-foreground">
-                                      <Checkbox checked={isSelected} onCheckedChange={() => isSelected ? removeScanTarget(url) : addScanTarget(url)} />
+                                    <label key={`${ep.id + site.id}`} className="flex cursor-pointer items-center gap-3 py-2.5 transition hover:text-foreground">
+                                      <Checkbox checked={isSelected} onCheckedChange={() => isSelected ? removeScanTarget(eachSite) : addScanTarget(eachSite)} />
                                       <span className={`rounded border px-1.5 py-0.5 font-mono text-[10px] font-bold ${HTTP_METHOD_COLORS[ep.method] ?? ""}`}>{ep.method}</span>
-                                      <span className={`flex-1 truncate font-mono text-xs ${isSelected ? "text-foreground" : "text-muted-foreground"}`}>{url}</span>
+                                      <span className={`flex-1 truncate font-mono text-xs ${isSelected ? "text-foreground" : "text-muted-foreground"}`}>{eachSite.websiteUrl}</span>
                                       <Badge variant="outline" className={`shrink-0 text-[9px] ${ep.status === "verified" ? "border-emerald-500/30 text-emerald-400" : "border-amber-500/30 text-amber-400"}`}>
                                         {ep.status}
                                       </Badge>
@@ -340,7 +353,7 @@ export default function AgentsPage() {
               <div className="h-px flex-1 bg-border/40" />
             </div>
 
-            <div className="flex gap-2">
+            {/* <div className="flex gap-2">
               <div className="relative flex-1">
                 <Globe className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input placeholder="https://api.yoursite.com/v1/endpoint" className="pl-9 font-mono"
@@ -350,19 +363,19 @@ export default function AgentsPage() {
               <Button variant="outline" onClick={handleAddCustomUrl} disabled={!customUrl.trim()} className="gap-1.5">
                 <Plus className="h-4 w-4" /> Add Target
               </Button>
-            </div>
+            </div> */}
 
-            {scanTargets.length > 0 && (
+            {selectedWebsite.length > 0 && (
               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
                 className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-3">
                 <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-cyan-400">
-                  Active Scan Targets ({scanTargets.length})
+                  Active Scan Targets ({selectedWebsite.length})
                 </p>
                 <div className="space-y-1">
-                  {scanTargets.map((url) => (
-                    <div key={url} className="flex items-center gap-2">
+                  {selectedWebsite.map((url) => (
+                    <div key={`${url.websiteUrl} + ${url.id}`} className="flex items-center gap-2">
                       <div className="h-1.5 w-1.5 shrink-0 rounded-full bg-cyan-400" />
-                      <span className="flex-1 truncate font-mono text-[11px] text-muted-foreground">{url}</span>
+                      <span className="flex-1 truncate font-mono text-[11px] text-muted-foreground">{url.websiteUrl}</span>
                       <button title="Scan" onClick={() => removeScanTarget(url)} className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground/60 transition hover:text-pink-400">
                         <X className="h-3 w-3" />
                       </button>
@@ -389,7 +402,7 @@ export default function AgentsPage() {
       >
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {PRESETS.map((preset) => (
-            <button key={preset.id} onClick={() => handlePresetClick(preset)}
+            <button key={`${preset.id} + ${preset.label}`} onClick={() => handlePresetClick(preset)}
               className={`flex flex-col items-start gap-2 overflow-hidden rounded-2xl border bg-gradient-to-br p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-lg ${activePreset === preset.id ? `${presetColorMap[preset.color]} ring-2 ring-offset-1 ring-offset-background` : "border-border/50 bg-muted/10 hover:border-border"
                 }`}>
               <div className="flex w-full items-start justify-between gap-2">
@@ -422,7 +435,7 @@ export default function AgentsPage() {
                     {catAgents.map((agent) => {
                       const active = selectedAgents.has(agent.key);
                       return (
-                        <button key={agent.key} onClick={() => toggleAgent(agent.key)}
+                        <button key={`${agent.key} + ${agent.label}`} onClick={() => toggleAgent(agent.key)}
                           className={`flex items-start gap-3 rounded-xl border p-3 text-left transition-all ${active ? `${meta.bg} ${meta.border} border` : "border-border/40 bg-muted/10 hover:bg-muted/20"}`}>
                           <div className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-all ${active ? `${meta.bg} ${meta.border} border` : "border-border/60 bg-muted/30"}`}>
                             {active && <CheckCircle2 className={`h-2.5 w-2.5 ${meta.color}`} />}
@@ -462,7 +475,7 @@ export default function AgentsPage() {
                   <div>
                     <p className="font-semibold">Ready to scan</p>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      {scanTargets.length > 0 ? `${scanTargets.length} target${scanTargets.length !== 1 ? "s" : ""}` : "No targets set"} ·{" "}
+                      {selectedWebsite.length > 0 ? `${selectedWebsite.length} target${selectedWebsite.length !== 1 ? "s" : ""}` : "No targets set"} ·{" "}
                       {selectedAgents.size > 0 ? `${selectedAgents.size} agent${selectedAgents.size !== 1 ? "s" : ""} selected` : "No agents selected"}
                     </p>
                   </div>
@@ -478,8 +491,8 @@ export default function AgentsPage() {
                     style={canScan ? { background: "linear-gradient(135deg, hsl(var(--brand-violet)), hsl(var(--brand-cyan)))" } : undefined}>
                     <Play className="h-4 w-4" /> Launch Scan
                   </Button>
-                  {scanTargets.length === 0 && <p className="text-xs text-amber-400">Add at least one target URL in section 01.</p>}
-                  {scanTargets.length > 0 && selectedAgents.size === 0 && <p className="text-xs text-amber-400">Select at least one agent in section 02.</p>}
+                  {selectedWebsite.length === 0 && <p className="text-xs text-amber-400">Add at least one target URL in section 01.</p>}
+                  {selectedWebsite.length > 0 && selectedAgents.size === 0 && <p className="text-xs text-amber-400">Select at least one agent in section 02.</p>}
                 </div>
               </Card>
             </motion.div>

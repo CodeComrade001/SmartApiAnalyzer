@@ -19,7 +19,7 @@ public sealed class AgentSelector : IAgentSelector
     };
 
   public IEnumerable<IAgent> Select(
-      GateKeeperIngestedEvent evt,
+      UserApprovedScanEvent evt,
       IEnumerable<IAgent> agents)
   {
     ArgumentNullException.ThrowIfNull(evt);

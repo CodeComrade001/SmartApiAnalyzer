@@ -41,11 +41,6 @@ public static class ApplicationServiceRegistration
         services.AddScoped<ISslTlsCheckService, SslTlsCheckService>();
         services.AddScoped<IUrlValidationService, UrlValidationService>();
 
-        // ======================================================
-        // USE CASES
-        // ======================================================
-        services.AddScoped<IRealtimeNotifier, RealtimeNotifier>();
-        // services.AddScoped<IIngestLogUseCase, IngestLogUseCase>();
 
         return services;
     }

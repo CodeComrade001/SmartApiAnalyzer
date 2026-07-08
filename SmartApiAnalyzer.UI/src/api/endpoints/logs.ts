@@ -13,8 +13,10 @@ export interface UpdateEndpointPayload {
 }
 
 export interface ScanInitiationSwitchPayload {
-  scanId: string,
+  domainUrl: string;
+  scanRequest: boolean;
   routesAndEndpoints: { route: string; endpoint: string }[]
+  agents: string[];
 }
 
 export const ingestLog = async (
@@ -51,7 +53,7 @@ export const updateDomainEndpoint = async (
 }
 
 export const scanInitiationSwitch = async (
-  data: ScanInitiationSwitchPayload
+  data: ScanInitiationSwitchPayload[]
 ) => {
   const response = await api.post(
     "/api/v1/start-scan",

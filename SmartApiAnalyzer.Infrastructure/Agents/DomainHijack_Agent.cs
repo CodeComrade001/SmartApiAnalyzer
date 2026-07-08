@@ -23,7 +23,7 @@ public sealed class DomainHijack_Agent : IAgent
     }
 
     public async Task<IAgentResult> ExecuteAsync(
-      GateKeeperIngestedEvent evt,
+      UserApprovedScanEvent evt,
       CancellationToken ct)
     {
         var sw = Stopwatch.StartNew();
@@ -31,7 +31,7 @@ public sealed class DomainHijack_Agent : IAgent
         {
             ct.ThrowIfCancellationRequested();
 
-            var uri = evt.NormalizedUri;
+            var uri = evt.domainUrl is null ? null : new Uri(evt.domainUrl.Trim(), UriKind.Absolute);
             if (uri is null || !Uri.TryCreate(evt.domainUrl?.Trim(), UriKind.Absolute, out uri))
                 return AgentRequestFactory.CriticalStop(Name, "No valid URI available.", sw.Elapsed);
 

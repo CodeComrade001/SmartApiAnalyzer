@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useCallback } from "react";
 import { PRESETS } from "@/data/agentCatalog";
 import type { AgentKey, AgentCategory, FindingSeverity } from "@/data/agentCatalog";
+import { WebsiteApiGroup } from "@/types";
+import { usePopUpNotify } from "@/hooks/use-pop-up-notify";
 
 /* ─── notification types ─── */
 export type NotifType = "error" | "warning" | "success" | "info";
@@ -43,9 +45,9 @@ interface ScanContextValue {
   setActivePreset: (id: string) => void;
 
   /* scan targets */
-  scanTargets: string[];
-  addScanTarget: (url: string) => void;
-  removeScanTarget: (url: string) => void;
+  scanTargets: WebsiteApiGroup[];
+  addScanTarget: (website: WebsiteApiGroup) => void;
+  removeScanTarget: (website: WebsiteApiGroup) => void;
   clearScanTargets: () => void;
 
   /* mission brief drawer */
@@ -87,7 +89,7 @@ export function ScanProvider({ children }: { children: React.ReactNode }) {
     new Set(PRESETS[0].agents)
   );
   const [activePreset, setActivePreset] = useState("full");
-  const [scanTargets, setScanTargets] = useState<string[]>([]);
+  const [scanTargets, setScanTargets] = useState<WebsiteApiGroup[]>([]);
   const [briefOpen, setBriefOpen] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
 
@@ -114,25 +116,13 @@ export function ScanProvider({ children }: { children: React.ReactNode }) {
     setActivePreset("custom");
   }, []);
 
-  /* targets */
-  const addScanTarget = useCallback((url: string) => {
-    const t = url.trim();
-    if (!t) return;
-    setScanTargets((prev) => (prev.includes(t) ? prev : [...prev, t]));
-  }, []);
-  const removeScanTarget = useCallback((url: string) => {
-    setScanTargets((prev) => prev.filter((u) => u !== url));
-  }, []);
-  const clearScanTargets = useCallback(() => setScanTargets([]), []);
-
-  /* notifications */
   const notify = useCallback(
     (n: Omit<AppNotification, "id" | "createdAt" | "duration"> & { duration?: number }) => {
       const duration =
         n.duration !== undefined ? n.duration
-        : n.type === "error"   ? 0
-        : n.type === "warning" ? 7000
-        : 4500;
+          : n.type === "error" ? 0
+            : n.type === "warning" ? 7000
+              : 4500;
       const notification: AppNotification = {
         ...n, duration, id: crypto.randomUUID(), createdAt: Date.now(),
       };
@@ -143,6 +133,45 @@ export function ScanProvider({ children }: { children: React.ReactNode }) {
   const dismiss = useCallback((id: string) => {
     setNotifications((prev) => prev.filter((n) => n.id !== id));
   }, []);
+
+  /* targets */
+
+  const MAX_SCAN_TARGETS = 3;
+
+  const addScanTarget = useCallback((website: WebsiteApiGroup) => {
+    setScanTargets((prev) => {
+      // Prevent duplicates
+      if (prev.some((w) => w.id === website.id)) {
+        return prev;
+      }
+
+      // Maximum reached
+      if (prev.length >= MAX_SCAN_TARGETS) {
+        notify({
+          type: "warning",
+          title: "Maximum scan targets reached",
+          message: `You can only add up to ${MAX_SCAN_TARGETS} scan targets.`,
+          duration: 3000,
+        });
+
+        return prev; // Don't add the new website
+      }
+
+      return [...prev, website];
+    });
+  }, [notify]);
+
+  const removeScanTarget = useCallback((website: WebsiteApiGroup) => {
+    setScanTargets((prev) => prev.filter((w) => w.id !== website.id));
+  }, []);
+
+  const clearScanTargets = useCallback(() => {
+    setScanTargets([]);
+  }, []);
+
+
+  /* notifications */
+
 
   /* scan logs */
   const addScanLog = useCallback((e: Omit<ScanLogEntry, "id" | "addedAt">) => {

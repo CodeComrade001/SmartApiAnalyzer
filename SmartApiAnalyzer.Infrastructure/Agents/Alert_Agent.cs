@@ -13,7 +13,7 @@ public sealed class Alert_Agent : IAgent
   public string Name => AgentType.Alert.ToSystemName();
   public int Priority => (int)AgentType.Alert;
 
-  public async Task<IAgentResult> ExecuteAsync(GateKeeperIngestedEvent evt, CancellationToken ct)
+  public async Task<IAgentResult> ExecuteAsync(UserApprovedScanEvent evt, CancellationToken ct)
   {
     var sw = Stopwatch.StartNew();
 

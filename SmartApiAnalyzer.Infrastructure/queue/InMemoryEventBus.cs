@@ -18,7 +18,7 @@ public class InMemoryEventBus : IEventBus
       T message,
       CancellationToken ct = default)
   {
-    if (message is GateKeeperIngestedEvent evt)
+    if (message is UserApprovedScanEvent evt)
       await _queue.EnqueueAsync(evt, ct);
   }
 }

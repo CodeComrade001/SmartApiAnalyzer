@@ -25,7 +25,7 @@ public sealed class LatencyPerformance_Agent : IAgent
     }
 
     public async Task<IAgentResult> ExecuteAsync(
-      GateKeeperIngestedEvent evt,
+      UserApprovedScanEvent evt,
       CancellationToken ct)
     {
         var sw = Stopwatch.StartNew();

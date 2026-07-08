@@ -12,7 +12,7 @@ public sealed class CostAnalysis_Agent : IAgent
   public string Name => AgentType.CostAnalysis.ToSystemName();
   public int Priority => (int)AgentType.CostAnalysis;
 
-  public async Task<IAgentResult> ExecuteAsync(GateKeeperIngestedEvent evt, CancellationToken ct)
+  public async Task<IAgentResult> ExecuteAsync(UserApprovedScanEvent evt, CancellationToken ct)
   {
     var sw = Stopwatch.StartNew();
 
