@@ -32,7 +32,8 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { ApiEndpoint, WebsiteApiGroup } from "@/types";
 import { mockWebsiteApis } from "@/services/data/mockData";
-import { UpdateEndpointPayload } from "@/api/endpoints/logs";
+import { updateDomainEndpoint, UpdateEndpointPayload } from "@/api/endpoints/logs";
+import { usePopUpNotify } from "@/hooks/use-pop-up-notify";
 
 /* ─── constants ─── */
 const HTTP_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
@@ -96,6 +97,7 @@ function MethodSelect({
 
 /* ─── page ─── */
 export default function ApiDiscovery() {
+  const notifyPopUp = usePopUpNotify();
   const [search, setSearch] = useState("");
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [isDiscovering, setIsDiscovering] = useState(false);
@@ -117,6 +119,7 @@ export default function ApiDiscovery() {
   const handleDiscoverApis = async () => {
     if (!websiteUrl.trim()) return;
     setIsDiscovering(true);
+    notifyPopUp("Scanning " + websiteUrl + " for API endpoints…", "info", "Discovery started");
     setTimeout(() => {
       const newSite: WebsiteApiGroup = {
         id: crypto.randomUUID(),
@@ -153,6 +156,7 @@ export default function ApiDiscovery() {
         ],
       };
       setWebsiteGroups((prev) => [newSite, ...prev]);
+      notifyPopUp("3 endpoints discovered for " + websiteUrl, "success", "Discovery complete");
       setWebsiteUrl("");
       setIsDiscovering(false);
     }, 1200);
@@ -161,16 +165,22 @@ export default function ApiDiscovery() {
   /* toggle endpoint selected */
   const handleToggleEndpoint = (websiteId: string, endpointId: string) => {
     setWebsiteGroups((prev) =>
-      prev.map((w) =>
-        w.id !== websiteId
-          ? w
-          : {
-            ...w,
-            endpoints: w.endpoints.map((e) =>
-              e.id !== endpointId ? e : { ...e, selected: !e.selected }
-            ),
-          }
-      )
+      prev.map((w) => {
+        if (w.id !== websiteId) return w;
+        const updated = w.endpoints.map((e) =>
+          e.id !== endpointId ? e : { ...e, selected: !e.selected }
+        );
+        const ep = updated.find((e) => e.id === endpointId);
+        if (ep) {
+          const path = ep.correctedPath?.trim() || ep.inferredPath || "endpoint";
+          notifyPopUp(
+            ep.selected ? path + " added to scan targets" : path + " removed from scan targets",
+            ep.selected ? "success" : "info",
+            ep.selected ? "Endpoint selected" : "Endpoint deselected",
+          );
+        }
+        return { ...w, endpoints: updated };
+      })
     );
   };
 
@@ -194,6 +204,9 @@ export default function ApiDiscovery() {
           }
       )
     );
+    if (value.trim().length > 0) {
+      notifyPopUp(value.trim() + " set as the verified route", "success", "Route updated");
+    }
   };
 
   /* update HTTP method */
@@ -210,6 +223,10 @@ export default function ApiDiscovery() {
           }
       )
     );
+    const site = websiteGroups.find((w) => w.id === websiteId);
+    const ep = site?.endpoints.find((e) => e.id === endpointId);
+    const path = ep?.correctedPath?.trim() || ep?.inferredPath || "endpoint";
+    notifyPopUp("Method changed to " + method + " on " + path, "info", "Method updated");
   };
 
   /* add new blank endpoint row */
@@ -229,10 +246,14 @@ export default function ApiDiscovery() {
         return { ...w, endpoints: [...w.endpoints, newEndpoint] };
       })
     );
+    notifyPopUp("A blank row was added — fill in the endpoint URL and method", "info", "Endpoint row added");
   };
 
   /* remove endpoint row */
   const handleRemoveEndpoint = (websiteId: string, endpointId: string) => {
+    const site = websiteGroups.find((w) => w.id === websiteId);
+    const ep = site?.endpoints.find((e) => e.id === endpointId);
+    const path = ep?.correctedPath?.trim() || ep?.inferredPath || "Endpoint";
     setWebsiteGroups((prev) =>
       prev.map((w) =>
         w.id !== websiteId
@@ -240,18 +261,54 @@ export default function ApiDiscovery() {
           : { ...w, endpoints: w.endpoints.filter((e) => e.id !== endpointId) }
       )
     );
+    notifyPopUp(path + " has been removed", "warning", "Endpoint removed");
   };
 
   /* save (wired to console — replace with real call later) */
-  const handleSave = (website: WebsiteApiGroup) => {
-    // const website = websiteGroups.find((w) => w.id === websiteId);
-    console.log("Saving website APIs", website);
+  const handleSave = async (website: WebsiteApiGroup) => {
+    notifyPopUp("Saving APIs for " + website.websiteUrl + "…", "info", "Save started");
+
+    if (!website.websiteUrl || website.websiteUrl === "") return notifyPopUp("Website URL is empty — cannot save", "error", "Save failed");
+    if (website.endpoints.length === 0) {
+      return notifyPopUp("No endpoints to save for " + website.websiteUrl, "error", "Save failed");
+    }
+
+    try {
+
+      const websitePayload: UpdateEndpointPayload = {
+        scanId: website.id,
+        routesAndEndpoints: website.endpoints.map((e) => ({
+          route: e.inferredPath,
+          endpoint: e.correctedPath || e.inferredPath,
+          method: e.method,
+        }))
+      };
+
+      const apiResponse = await updateDomainEndpoint(websitePayload);
+
+      if (!apiResponse || apiResponse.status !== 200) {
+        notifyPopUp("Failed to save APIs for " + website.websiteUrl, "error", "Save failed");
+        return;
+      }
+
+      return notifyPopUp("APIs for " + website.websiteUrl + " saved successfully", "success", "Save complete");
+
+    } catch (error) {
+      console.error("Error saving website APIs", error);
+      notifyPopUp("Failed to save APIs for " + website.websiteUrl, "error", "Save failed");
+    }
   };
 
   /* next step */
   const handleNext = () => {
-    console.log("Go to agent selection");
+    const totalSelected = websiteGroups.reduce((n, w) => n + w.endpoints.filter((e) => e.selected).length, 0);
+    if (totalSelected === 0) {
+      notifyPopUp("Select at least one endpoint before proceeding to agent selection", "error", "No endpoints selected");
+      return;
+    }
+    notifyPopUp(totalSelected + " endpoint" + (totalSelected !== 1 ? "s" : "") + " queued — head to Agent Scan to launch", "success", "Ready for agent scan");
   };
+
 
   return (
     <div className="flex flex-col gap-6">

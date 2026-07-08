@@ -106,6 +106,7 @@ export function MissionBrief() {
                 </p>
               </div>
               <button
+                title="Close"
                 onClick={() => setBriefOpen(false)}
                 className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted/50 hover:text-foreground"
               >
@@ -127,6 +128,7 @@ export function MissionBrief() {
                   </div>
                   {scanTargets.length > 0 && (
                     <button
+                      title="Clear all targets"
                       onClick={clearScanTargets}
                       className="text-[10px] text-muted-foreground underline underline-offset-2 transition hover:text-foreground"
                     >
@@ -147,12 +149,13 @@ export function MissionBrief() {
                   <div className="space-y-1.5">
                     {scanTargets.map((url) => (
                       <div
-                        key={url}
+                        key={url.websiteUrl}
                         className="flex items-center gap-2 rounded-lg border border-border/40 bg-muted/10 px-2.5 py-2"
                       >
                         <div className="h-1.5 w-1.5 shrink-0 rounded-full bg-[hsl(var(--brand-cyan))]" />
-                        <span className="flex-1 truncate font-mono text-[10px]">{url}</span>
+                        <span className="flex-1 truncate font-mono text-[10px]">{url.websiteUrl}</span>
                         <button
+                          title="Remove target"
                           onClick={() => removeScanTarget(url)}
                           className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground transition hover:text-[hsl(var(--brand-pink))]"
                         >

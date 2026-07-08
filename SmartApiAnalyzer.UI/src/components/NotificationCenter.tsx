@@ -113,6 +113,7 @@ function NotifCard({ n }: { n: AppNotification }) {
 
         {/* close */}
         <button
+          title="Close"
           onClick={() => dismiss(n.id)}
           className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-muted-foreground/60 transition hover:bg-muted/40 hover:text-foreground"
         >

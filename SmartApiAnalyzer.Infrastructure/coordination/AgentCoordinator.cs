@@ -37,14 +37,14 @@ public sealed class AgentCoordinator : ICoordinator
 
   public async Task<PipelineResult> RunAsync(
       Guid sessionId,
-      ApprovalRequest request,
+      UserApprovedScanEvent request,
       CancellationToken ct)
   {
     ArgumentNullException.ThrowIfNull(request);
 
     _logger.LogInformation(
         "Resuming Agent execution session {sessionId} with {request.RoutesAndEndpoints.Count} approved route(s).",
-        sessionId, request.RoutesAndEndpoints.Count);
+        sessionId, request.ApprovedRoutesAndMethods.Count);
 
     // ResumeAsync rehydrates a minimal event representing the approved continuation.
     // The endpoint here is intentionally empty — resumed pipelines operate on
@@ -53,7 +53,7 @@ public sealed class AgentCoordinator : ICoordinator
     var evt = new UserApprovedScanEvent(
         request.TenantId,
         passedDomainUrl: string.Empty,
-        request.RoutesAndEndpoints,
+        request.ApprovedRoutesAndMethods,
         statusCode: 200,
         responseTimeMs: 0,
         timestamp: DateTime.UtcNow)

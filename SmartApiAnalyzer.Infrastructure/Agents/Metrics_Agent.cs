@@ -17,7 +17,7 @@ public sealed class Metrics_Agent : IAgent
     public string Name => AgentType.Metrics.ToSystemName();
     public int Priority => (int)AgentType.Metrics;
 
-    public async Task<IAgentResult> ExecuteAsync(GateKeeperIngestedEvent evt, CancellationToken ct)
+    public async Task<IAgentResult> ExecuteAsync(UserApprovedScanEvent evt, CancellationToken ct)
     {
         var sw = Stopwatch.StartNew();
 

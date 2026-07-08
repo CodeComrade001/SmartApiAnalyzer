@@ -48,15 +48,6 @@ builder.Services
     .AddApplicationLayer()
     .AddInfrastructureLayer(builder.Configuration);
 
-// builder.Services.AddScoped<ServiceCollectionExtensions>()
-
-
-// ======================================================
-// BACKGROUND WORKER
-// ======================================================
-
-builder.Services.AddHostedService<LogProcessingWorker>();
-
 // ======================================================
 // SWAGGER UI
 // ======================================================

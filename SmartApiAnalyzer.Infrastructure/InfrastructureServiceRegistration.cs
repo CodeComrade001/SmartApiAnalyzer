@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using SmartApiAnalyzer.Application.Interfaces.Temp_interfaces;
 using SmartApiAnalyzer.Application.Services;
 
 using SmartApiAnalyzer.Application.Services.Agents;
@@ -10,13 +11,13 @@ using SmartApiAnalyzer.Application.Services.Interface.Events;
 using SmartApiAnalyzer.Application.Services.Interface.RepositoriesInterface;
 
 using SmartApiAnalyzer.Infrastructure.Agents;
-using SmartApiAnalyzer.Infrastructure.Agents.Factory;
 using SmartApiAnalyzer.Infrastructure.Agents.Registry;
 
 using SmartApiAnalyzer.Infrastructure.queue;
 
 using SmartApiAnalyzer.Infrastructure.Repositories;
 using SmartApiAnalyzer.Infrastructure.Services;
+using SmartApiAnalyzer.Infrastructure.TempFiles.TemporaryInMemoryStorage;
 
 using SmartAPiAnalyzer.Infrastructure.Coordination;
 
@@ -41,6 +42,8 @@ public static class InfrastructureServiceRegistration
         RegisterBackgroundWorkers(services);
 
         RegisterHttpClients(services);
+
+        RegisterTemporaryStorage(services);
 
         return services;
     }
@@ -148,5 +151,13 @@ public static class InfrastructureServiceRegistration
         IServiceCollection services)
     {
         services.AddHttpClient();
+    }
+
+    private static void RegisterTemporaryStorage(
+    IServiceCollection services)
+    {
+        services.AddSingleton(
+            typeof(ITemporaryInMemoryStorage<>),
+            typeof(TemporaryInMemoryStorage<>));
     }
 }

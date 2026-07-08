@@ -17,7 +17,7 @@ public sealed class SecurityAgentEvaluation_Agent : IAgent
     public string Name => AgentType.SecurityAgentEvaluation.ToSystemName();
     public int Priority => (int)AgentType.SecurityAgentEvaluation;
 
-    public async Task<IAgentResult> ExecuteAsync(GateKeeperIngestedEvent evt, CancellationToken ct)
+    public async Task<IAgentResult> ExecuteAsync(UserApprovedScanEvent evt, CancellationToken ct)
     {
         var sw = Stopwatch.StartNew();
 

@@ -21,6 +21,7 @@ public class LogProcessingWorker : BackgroundService
     while (!stoppingToken.IsCancellationRequested)
     {
       var evt = await _queue.DequeueAsync(stoppingToken);
+      var sessionId = Guid.NewGuid(); // Generate a new session ID for each event
 
       using var scope = _scopeFactory.CreateScope();
 
@@ -34,7 +35,7 @@ public class LogProcessingWorker : BackgroundService
           "New log received; processing started",
           evt);
 
-      await coordinator.RunAsync(evt, stoppingToken);
+      await coordinator.RunAsync(sessionId, evt, stoppingToken);
     }
   }
 }

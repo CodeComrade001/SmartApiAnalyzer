@@ -24,7 +24,7 @@ public sealed class CredentialCheck_Agent : IAgent
         _logger = logger;
     }
 
-    public async Task<IAgentResult> ExecuteAsync(GateKeeperIngestedEvent evt, CancellationToken ct)
+    public async Task<IAgentResult> ExecuteAsync(UserApprovedScanEvent evt, CancellationToken ct)
     {
         var sw = Stopwatch.StartNew();
         try
