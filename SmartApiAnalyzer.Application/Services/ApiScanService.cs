@@ -183,7 +183,7 @@ public class ApiScanService : IApiScanService
               .ToList()
       };
 
-      var storageResult = _temporaryStorage.StoreScanResult(scanId.ToString(), response);
+      var storageResult = _temporaryStorage.StoreScanResult(scanId, "IngestAsync Function", response);
 
       if (!storageResult)
       {
@@ -230,11 +230,12 @@ public class ApiScanService : IApiScanService
               request.RoutesAndEndpoints,
               0,
               0,
-              DateTime.UtcNow);
+              DateTime.UtcNow,
+              request.Agents);
 
       await _eventBus.PublishAsync(userApprovedEvent, ct);
 
-      var isDatabaseUpdated = _temporaryStorage.StoreScanResult(request.ScanId.ToString(), new ApiScanSchema.ApiScanResultResponse()); // mock the database update result
+      var isDatabaseUpdated = _temporaryStorage.StoreScanResult(request.ScanId, "StartApiScanExecutionAsync function", new ApiScanSchema.ApiScanResultResponse()); // mock the database update result
       if (!isDatabaseUpdated) return ServiceResult<ApiScanSchema.AgentScanResponse>.Fail("Scan execution failed");
 
 
@@ -265,7 +266,7 @@ public class ApiScanService : IApiScanService
     try
     {
 
-      var isDatabaseUpdated = _temporaryStorage.StoreScanResult(request.ScanId.ToString(), new ApiScanSchema.ApiScanResultResponse()); // mock the database update result
+      var isDatabaseUpdated = _temporaryStorage.StoreScanResult(request.ScanId, "UpdateUrlEndpointsAsync Function", new ApiScanSchema.ApiScanResultResponse()); // mock the database update result
       if (!isDatabaseUpdated) return ServiceResult<ApiScanSchema.defaultApiResponse>.Fail("Failed to update URL endpoints");
 
       return ServiceResult<ApiScanSchema.defaultApiResponse>.Ok(new ApiScanSchema.defaultApiResponse());

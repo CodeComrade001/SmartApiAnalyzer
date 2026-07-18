@@ -2,7 +2,6 @@ import React, { createContext, useContext, useState, useCallback } from "react";
 import { PRESETS } from "@/data/agentCatalog";
 import type { AgentKey, AgentCategory, FindingSeverity } from "@/data/agentCatalog";
 import { WebsiteApiGroup } from "@/types";
-import { usePopUpNotify } from "@/hooks/use-pop-up-notify";
 
 /* ─── notification types ─── */
 export type NotifType = "error" | "warning" | "success" | "info";

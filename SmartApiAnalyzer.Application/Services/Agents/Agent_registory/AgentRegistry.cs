@@ -37,7 +37,7 @@ public sealed class AgentRegistry : IAgentRegistry
             return agent;
 
         throw new KeyNotFoundException(
-            $"No agent registered with name '{name}'.");
+            $"No agent named '{name}'");
     }
 
     public bool TryGet(string name, out IAgent? agent)

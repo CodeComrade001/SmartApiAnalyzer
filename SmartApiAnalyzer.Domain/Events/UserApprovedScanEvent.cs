@@ -13,6 +13,7 @@ public sealed class UserApprovedScanEvent
   public DateTime Timestamp { get; }
 
 
+  public List<string> UserSelectedAgents { get; set; }
   // Resume / approval flow
   public Guid SessionId { get; set; }
   public List<RouteInputDto> ApprovedRoutesAndMethods { get; set; } = new();
@@ -26,7 +27,8 @@ public sealed class UserApprovedScanEvent
       List<RouteInputDto> approvedRoutesAndMethods,
       int statusCode,
       double responseTimeMs,
-      DateTime timestamp)
+      DateTime timestamp,
+      List<string> userSelectedAgents)
   {
     EventId = Guid.NewGuid();
     TenantId = tenantId;
@@ -35,6 +37,7 @@ public sealed class UserApprovedScanEvent
     ResponseTimeMs = responseTimeMs;
     Timestamp = timestamp;
     ApprovedRoutesAndMethods = approvedRoutesAndMethods;
+    UserSelectedAgents = userSelectedAgents;
   }
 
   public List<AgentResult<object>> AgentResults { get; init; } = new();

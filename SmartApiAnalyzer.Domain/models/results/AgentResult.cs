@@ -127,15 +127,46 @@ public sealed class UrlValidationResult
   public string? FailureReason { get; init; }
 }
 
+// ── EndpointDiscoveryResult ─────────────────────────────────────────────────────────────
+
 public sealed class EndpointDiscoveryResult
 {
   public List<string> DiscoveredRoutes { get; init; } = new();
-  public List<string> AllowedMethods { get; init; } = new();
+
+  /// <summary>
+  /// Per-route method map, e.g. "/products" -> ["GET", "POST"].
+  /// Replaces the old flat AllowedMethods list, which couldn't express
+  /// that different routes support different methods.
+  /// </summary>
+  public Dictionary<string, List<string>> RouteMethods { get; init; } = new();
+
+  /// <summary>
+  /// Tree view of DiscoveredRoutes with parent/child relationships
+  /// (e.g. "/products" is a parent of "/products/{id}").
+  /// Uses a local EndpointNode type to avoid referencing the service layer.
+  /// </summary>
+  public List<EndpointNode> Hierarchy { get; init; } = new();
+
   public string DiscoveryMethod { get; init; } = string.Empty; // OpenApi|Options|Probe|Heuristic
   public bool OpenApiAvailable { get; init; }
   public string? OpenApiUrl { get; init; }
 }
 
+/// <summary>
+/// Minimal endpoint node representation used by EndpointDiscoveryResult.
+/// Placed here to avoid depending on EndpointDiscoveryService types from other projects.
+/// </summary>
+// ----------------------------------------------------
+// HIERARCHY BUILDING (steps 5 + 6)
+// ----------------------------------------------------
+public sealed class EndpointNode
+{
+  public string Segment { get; init; } = "";
+  public string FullPath { get; init; } = "";
+  public bool IsParameter { get; init; }
+  public List<EndpointNode> Children { get; } = new();
+  public bool HasChildren => Children.Count > 0;
+}
 // ── ThreatResult ─────────────────────────────────────────────────────────────
 
 public sealed class ThreatIntelResult

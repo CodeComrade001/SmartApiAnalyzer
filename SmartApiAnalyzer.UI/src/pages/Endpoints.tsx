@@ -1,43 +1,22 @@
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Search,
-  Globe,
-  CheckCircle2,
-  CircleAlert,
-  Plus,
-  Save,
-  ArrowRight,
-  Link2,
-  Trash2,
-} from "lucide-react";
+import { Search, Globe, CheckCircle2, CircleAlert, Plus, Save, ArrowRight, Link2, Trash2, AlertTriangle, } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ApiEndpoint, WebsiteApiGroup } from "@/types";
-import { mockWebsiteApis } from "@/services/data/mockData";
-import { updateDomainEndpoint, UpdateEndpointPayload } from "@/api/endpoints/logs";
+import { ApiEndpoint, HTTP_METHODS, HttpMethod, WebsiteApiGroup } from "@/types";
+import { ingestDomainUrl, RoutesAndEndpointsPayload, updateDomainEndpoint, UpdateEndpointPayload } from "@/api/endpoints/logs";
 import { usePopUpNotify } from "@/hooks/use-pop-up-notify";
+import UrlSchemaImport from "@/components/UrlSchemaImport";
+import NavigationGuard from "@/components/NavigationGuard";
+import { getallMethodEndpointGrouped } from "@/components/helpers/getallMethodEndpointGrouped";
 
 /* ─── constants ─── */
-const HTTP_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
-type HttpMethod = (typeof HTTP_METHODS)[number];
+// const HTTP_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
+// type HttpMethod = (typeof HTTP_METHODS)[number];
 
 const fadeUp = {
   hidden: { opacity: 0, y: 16 },
@@ -101,8 +80,7 @@ export default function ApiDiscovery() {
   const [search, setSearch] = useState("");
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [isDiscovering, setIsDiscovering] = useState(false);
-  const [websiteGroups, setWebsiteGroups] = useState<WebsiteApiGroup[]>(mockWebsiteApis);
-  const [apiUpdateEndpointPayload, setApiUpdateEndpointPayload] = useState<UpdateEndpointPayload>({ scanId: "", routesAndEndpoints: [] });
+  const [websiteGroups, setWebsiteGroups] = useState<WebsiteApiGroup[]>([]);
 
   /* search filter */
   const filteredWebsites = useMemo(() => {
@@ -115,52 +93,86 @@ export default function ApiDiscovery() {
     );
   }, [search, websiteGroups]);
 
+  /* NEW: names of websites that have never been saved, or were saved and then changed again.
+     Used to power the NavigationGuard message and the per-row "unsaved" badge. */
+  const unsavedSiteNames = useMemo(() => {
+    return websiteGroups
+      .filter((w) => w.endpoints.length > 0 && (!w.isSaved || w.hasChanges))
+      .map((w) => w.websiteUrl)
+      .join(", ");
+  }, [websiteGroups]);
+
   /* discover APIs (mocked) */
   const handleDiscoverApis = async () => {
-    if (!websiteUrl.trim()) return;
+    if (!websiteUrl.trim()) return notifyPopUp("Please enter a website URL to discover APIs", "error", "Discovery failed");
     setIsDiscovering(true);
     notifyPopUp("Scanning " + websiteUrl + " for API endpoints…", "info", "Discovery started");
-    setTimeout(() => {
-      const newSite: WebsiteApiGroup = {
-        id: crypto.randomUUID(),
-        websiteUrl,
-        discoveredAt: new Date().toISOString(),
-        endpoints: [
-          {
-            id: crypto.randomUUID(),
-            inferredPath: `${websiteUrl}/api/v1/users`,
-            correctedPath: "",
-            method: "GET",
-            confidence: 91,
-            selected: true,
-            status: "verified",
-          },
-          {
-            id: crypto.randomUUID(),
-            inferredPath: `${websiteUrl}/api/v1/orders`,
-            correctedPath: "",
-            method: "POST",
-            confidence: 73,
-            selected: false,
-            status: "unverified",
-          },
-          {
-            id: crypto.randomUUID(),
-            inferredPath: `${websiteUrl}/graphql`,
-            correctedPath: "",
-            method: "POST",
-            confidence: 62,
-            selected: false,
-            status: "unverified",
-          },
-        ],
-      };
-      setWebsiteGroups((prev) => [newSite, ...prev]);
-      notifyPopUp("3 endpoints discovered for " + websiteUrl, "success", "Discovery complete");
-      setWebsiteUrl("");
+    try {
+
+      const apiResponse = await ingestDomainUrl({ DomainUrl: websiteUrl });
+      console.log("Turbo Log  ~ handleDiscoverApis ~ apiResponse:", apiResponse);
+
+
+      if (!apiResponse.success || !apiResponse.data) return notifyPopUp("Failed to discover APIs for " + websiteUrl, "error", "Discovery failed");
+
+      setWebsiteGroups((prev) => [
+        ...prev,
+        {
+          id: apiResponse.data.scanId,
+          discoveredAt: new Date().toISOString(),
+          websiteUrl: apiResponse.data.domainUrl,
+          isSaved: false,
+          hasChanges: false,
+          endpoints: apiResponse.data.endpoints.map((endpoint) => {
+            const method: HttpMethod =
+              HTTP_METHODS.find(
+                (m) => m === endpoint.suggestedMethods[0]
+              ) ?? "GET";
+
+            return {
+              id: crypto.randomUUID(),
+              inferredPath: endpoint.path,
+              correctedPath: endpoint.path,
+              method,
+              confidence: 100,
+              selected: false,
+              status: "unverified",
+            };
+          }),
+        },
+      ]);
+
+      return notifyPopUp("APIs for " + websiteUrl + " discovered successfully", "success", "Discovery complete");
+    } catch (error) {
+      notifyPopUp("An error occurred while discovering APIs", "error", "Discovery failed");
+      console.error("Error discovering APIs", error);
+    } finally {
       setIsDiscovering(false);
-    }, 1200);
+    }
+
   };
+
+  const handleSchemaImport = (groups: WebsiteApiGroup[]) => {
+    try {
+
+      const groupsWithSaveState = groups.map((g) => ({
+        ...g,
+        isSaved: false,
+        hasChanges: false,
+      }));
+
+      setWebsiteGroups((prev) => [...groupsWithSaveState, ...prev]);
+      const endpointCount = groups.reduce((n, g) => n + g.endpoints.length, 0);
+      notifyPopUp(
+        `${groups.length} site${groups.length !== 1 ? "s" : ""} · ${endpointCount} endpoint${endpointCount !== 1 ? "s" : ""} imported from schema file`,
+        "success",
+        "Schema import complete",
+      );
+    } catch (error) {
+      console.error("Error importing schema file", error);
+      notifyPopUp("An error occurred while importing the schema file", "error", "Schema import failed");
+    };
+  }
 
   /* toggle endpoint selected */
   const handleToggleEndpoint = (websiteId: string, endpointId: string) => {
@@ -179,7 +191,7 @@ export default function ApiDiscovery() {
             ep.selected ? "Endpoint selected" : "Endpoint deselected",
           );
         }
-        return { ...w, endpoints: updated };
+        return { ...w, endpoints: updated, isSaved: false, hasChanges: true };
       })
     );
   };
@@ -201,6 +213,8 @@ export default function ApiDiscovery() {
                   status: value.trim().length > 0 ? "verified" : e.status,
                 }
             ),
+            isSaved: false,
+            hasChanges: true,
           }
       )
     );
@@ -220,6 +234,8 @@ export default function ApiDiscovery() {
             endpoints: w.endpoints.map((e) =>
               e.id !== endpointId ? e : { ...e, method }
             ),
+            isSaved: false,
+            hasChanges: true,
           }
       )
     );
@@ -243,7 +259,7 @@ export default function ApiDiscovery() {
           selected: false,
           status: "ignored",
         };
-        return { ...w, endpoints: [...w.endpoints, newEndpoint] };
+        return { ...w, endpoints: [...w.endpoints, newEndpoint], isSaved: false, hasChanges: true };
       })
     );
     notifyPopUp("A blank row was added — fill in the endpoint URL and method", "info", "Endpoint row added");
@@ -258,7 +274,7 @@ export default function ApiDiscovery() {
       prev.map((w) =>
         w.id !== websiteId
           ? w
-          : { ...w, endpoints: w.endpoints.filter((e) => e.id !== endpointId) }
+          : { ...w, endpoints: w.endpoints.filter((e) => e.id !== endpointId), isSaved: false, hasChanges: true }
       )
     );
     notifyPopUp(path + " has been removed", "warning", "Endpoint removed");
@@ -275,13 +291,12 @@ export default function ApiDiscovery() {
 
     try {
 
+      const groupedResult: RoutesAndEndpointsPayload[] = getallMethodEndpointGrouped(website.endpoints);
+      if (!groupedResult || groupedResult.length === 0) return notifyPopUp("The selected scan targets do not contain any valid endpoints to scan.", "error", "No valid endpoints found");
+
       const websitePayload: UpdateEndpointPayload = {
-        scanId: website.id,
-        routesAndEndpoints: website.endpoints.map((e) => ({
-          route: e.inferredPath,
-          endpoint: e.correctedPath || e.inferredPath,
-          method: e.method,
-        }))
+        ScanId: website.id,
+        RoutesAndEndpoints: groupedResult
       };
 
       const apiResponse = await updateDomainEndpoint(websitePayload);
@@ -290,6 +305,12 @@ export default function ApiDiscovery() {
         notifyPopUp("Failed to save APIs for " + website.websiteUrl, "error", "Save failed");
         return;
       }
+
+      setWebsiteGroups((prev) =>
+        prev.map((w) =>
+          w.id !== website.id ? w : { ...w, isSaved: true, hasChanges: false }
+        )
+      );
 
       return notifyPopUp("APIs for " + website.websiteUrl + " saved successfully", "success", "Save complete");
 
@@ -309,9 +330,19 @@ export default function ApiDiscovery() {
     notifyPopUp(totalSelected + " endpoint" + (totalSelected !== 1 ? "s" : "") + " queued — head to Agent Scan to launch", "success", "Ready for agent scan");
   };
 
+  const hasUnsavedImports = () => {
+    return websiteGroups.some((w) => w.endpoints.length > 0 && (!w.isSaved || w.hasChanges));
+  }
+
 
   return (
     <div className="flex flex-col gap-6">
+      <NavigationGuard
+        when={hasUnsavedImports()}
+        title="Unsaved imported endpoints"
+        message={`You imported endpoint data from a schema file${unsavedSiteNames ? ` (${unsavedSiteNames})` : ""} but haven't saved it yet.`}
+        consequence="Leaving this page will permanently discard all imported endpoints. They will not be queued for scanning and cannot be recovered without re-importing the file."
+      />
       {/* ── Page header ── */}
       <motion.div initial="hidden" animate="show" variants={fadeUp} className="flex flex-wrap items-end justify-between gap-4">
         <div>
@@ -345,6 +376,21 @@ export default function ApiDiscovery() {
         </Card>
       </motion.div>
 
+      {/* ── Import from schema file ── */}
+      <motion.div initial="hidden" animate="show" variants={fadeUp}>
+        <Card className="glass-card">
+          <CardHeader>
+            <CardTitle>Import from Schema File</CardTitle>
+            <CardDescription>
+              Drag in a YAML or JSON file describing a domain and its endpoints — parsed output is logged to the console.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <UrlSchemaImport onImport={handleSchemaImport} />
+          </CardContent>
+        </Card>
+      </motion.div>
+
       {/* ── Search ── */}
       <motion.div initial="hidden" animate="show" variants={fadeUp}>
         <Card className="glass-card">
@@ -372,176 +418,205 @@ export default function ApiDiscovery() {
             </CardContent>
           </Card>
         ) : (
-          filteredWebsites.map((website, index) => (
-            <motion.div
-              key={website.id}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05 }}
-            >
-              <Card className="glass-card">
-                <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                  <div>
-                    <CardTitle className="flex items-center gap-2">
-                      <Link2 className="h-4 w-4" />
-                      {website.websiteUrl}
-                    </CardTitle>
-                    <CardDescription>
-                      {website.endpoints.length} discovered endpoint{website.endpoints.length !== 1 ? "s" : ""}
-                      {" · "}
-                      {website.endpoints.filter((e) => e.selected).length} selected
-                    </CardDescription>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => handleAddEndpoint(website.id)}>
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add Endpoint
-                    </Button>
-                    <Button size="sm" onClick={() => handleSave(website)}>
-                      <Save className="mr-2 h-4 w-4" />
-                      Save APIs
-                    </Button>
-                  </div>
-                </CardHeader>
+          filteredWebsites.map((website, index) => {
+            // NEW: derive a single boolean used purely for display — does not affect any API call
+            const isUnsaved = !website.isSaved || website.hasChanges;
+            return (
+              <motion.div
+                key={website.id}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.05 }}
+              >
+                <Card className="glass-card">
+                  <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        <Link2 className="h-4 w-4" />
+                        {website.websiteUrl}
+                        {/* NEW: per-site unsaved indicator */}
+                        {isUnsaved ? (
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] bg-[hsl(var(--brand-amber))]/15 text-[hsl(var(--brand-amber))] border-[hsl(var(--brand-amber))]/30"
+                          >
+                            <span className="flex items-center gap-1">
+                              <AlertTriangle className="h-3 w-3" />
+                              Unsaved
+                            </span>
+                          </Badge>
+                        ) : (
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] bg-[hsl(var(--brand-emerald))]/15 text-[hsl(var(--brand-emerald))] border-[hsl(var(--brand-emerald))]/30"
+                          >
+                            <span className="flex items-center gap-1">
+                              <CheckCircle2 className="h-3 w-3" />
+                              Saved
+                            </span>
+                          </Badge>
+                        )}
+                      </CardTitle>
+                      <CardDescription>
+                        {website.endpoints.length} discovered endpoint{website.endpoints.length !== 1 ? "s" : ""}
+                        {" · "}
+                        {website.endpoints.filter((e) => e.selected).length} selected
+                      </CardDescription>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" onClick={() => handleAddEndpoint(website.id)}>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Add Endpoint
+                      </Button>
+                      <Button size="sm" variant={isUnsaved ? "default" : "outline"} onClick={() => handleSave(website)}>
+                        <Save className="mr-2 h-4 w-4" />
+                        {isUnsaved ? "Save APIs" : "Saved"}
+                      </Button>
+                    </div>
+                  </CardHeader>
 
-                <CardContent className="p-0">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-[52px]">Use</TableHead>
-                        <TableHead className="w-[110px]">Method</TableHead>
-                        <TableHead>Discovered Endpoint</TableHead>
-                        <TableHead>Correct API URL</TableHead>
-                        <TableHead className="w-[90px] text-center">Confidence</TableHead>
-                        <TableHead className="w-[110px] text-center">Status</TableHead>
-                        <TableHead className="w-[44px]" />
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {website.endpoints.map((endpoint) => (
-                        <TableRow key={endpoint.id} className={endpoint.selected ? "" : "opacity-60"}>
-                          {/* select */}
-                          <TableCell>
-                            <Checkbox
-                              checked={endpoint.selected}
-                              onCheckedChange={() => handleToggleEndpoint(website.id, endpoint.id)}
-                            />
-                          </TableCell>
+                  <CardContent className="p-0">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[52px]">Use</TableHead>
+                          <TableHead className="w-[110px]">Method</TableHead>
+                          <TableHead>Discovered Endpoint</TableHead>
+                          <TableHead>Correct API URL</TableHead>
+                          {/* <TableHead className="w-[90px] text-center">Saved</TableHead> */}
+                          <TableHead className="w-[110px] text-center">Status</TableHead>
+                          <TableHead className="w-[44px]" />
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {website.endpoints.map((endpoint) => (
+                          <TableRow key={endpoint.id} className={endpoint.selected ? "" : "opacity-60"}>
+                            {/* select */}
+                            <TableCell>
+                              <Checkbox
+                                checked={endpoint.selected}
+                                onCheckedChange={() => handleToggleEndpoint(website.id, endpoint.id)}
+                              />
+                            </TableCell>
 
-                          {/* method dropdown */}
-                          <TableCell>
-                            <MethodSelect
-                              value={endpoint.method as HttpMethod}
-                              onChange={(m) => handleMethodChange(website.id, endpoint.id, m)}
-                            />
-                          </TableCell>
+                            {/* method dropdown */}
+                            <TableCell>
+                              <MethodSelect
+                                value={endpoint.method as HttpMethod}
+                                onChange={(m) => handleMethodChange(website.id, endpoint.id, m)}
+                              />
+                            </TableCell>
 
-                          {/* discovered path — editable if blank */}
-                          <TableCell>
-                            {endpoint.inferredPath ? (
-                              <span className="font-mono text-xs truncate max-w-[200px] block">
-                                {endpoint.inferredPath}
-                              </span>
-                            ) : (
-                              <Input
-                                placeholder="https://api.example.com/path"
-                                className="h-7 font-mono text-xs"
-                                value={endpoint.inferredPath}
-                                onChange={(e) =>
-                                  setWebsiteGroups((prev) =>
-                                    prev.map((w) =>
-                                      w.id !== website.id
-                                        ? w
-                                        : {
-                                          ...w,
-                                          endpoints: w.endpoints.map((ep) =>
-                                            ep.id !== endpoint.id
-                                              ? ep
-                                              : { ...ep, inferredPath: e.target.value }
-                                          ),
-                                        }
+                            {/* discovered path — editable if blank */}
+                            <TableCell>
+                              {endpoint.inferredPath ? (
+                                <span className="font-mono text-xs truncate max-w-[200px] block">
+                                  {endpoint.inferredPath}
+                                </span>
+                              ) : (
+                                <Input
+                                  placeholder="https://api.example.com/path"
+                                  className="h-7 font-mono text-xs"
+                                  value={endpoint.inferredPath}
+                                  onChange={(e) =>
+                                    setWebsiteGroups((prev) =>
+                                      prev.map((w) =>
+                                        w.id !== website.id
+                                          ? w
+                                          : {
+                                            ...w,
+                                            endpoints: w.endpoints.map((ep) =>
+                                              ep.id !== endpoint.id
+                                                ? ep
+                                                : { ...ep, inferredPath: e.target.value }
+                                            ),
+                                            // NEW: editing the discovered path also invalidates saved state
+                                            isSaved: false,
+                                            hasChanges: true,
+                                          }
+                                      )
                                     )
-                                  )
+                                  }
+                                />
+                              )}
+                            </TableCell>
+
+                            {/* corrected URL */}
+                            <TableCell>
+                              <Input
+                                value={endpoint.correctedPath ?? ""}
+                                placeholder="Enter correct API URL…"
+                                className="h-7 font-mono text-xs"
+                                onChange={(e) =>
+                                  handleApiUrlChange(website.id, endpoint.id, e.target.value)
                                 }
                               />
-                            )}
-                          </TableCell>
+                            </TableCell>
 
-                          {/* corrected URL */}
-                          <TableCell>
-                            <Input
-                              value={endpoint.correctedPath ?? ""}
-                              placeholder="Enter correct API URL…"
-                              className="h-7 font-mono text-xs"
-                              onChange={(e) =>
-                                handleApiUrlChange(website.id, endpoint.id, e.target.value)
-                              }
-                            />
-                          </TableCell>
+                            {/* confidence */}
+                            {/* <TableCell className="text-center">
+                              {endpoint.confidence > 0 ? (
+                                <Badge
+                                  variant="secondary"
+                                  className={`tabular-nums text-[10px] ${endpoint.confidence >= 85
+                                    ? "text-emerald-400"
+                                    : endpoint.confidence >= 65
+                                      ? "text-amber-400"
+                                      : "text-muted-foreground"
+                                    }`}
+                                >
+                                  {endpoint.confidence}%
+                                </Badge>
+                              ) : (
+                                <span className="text-xs text-muted-foreground/40">—</span>
+                              )}
+                            </TableCell> */}
 
-                          {/* confidence */}
-                          <TableCell className="text-center">
-                            {endpoint.confidence > 0 ? (
+                            {/* status */}
+                            <TableCell className="text-center">
                               <Badge
-                                variant="secondary"
-                                className={`tabular-nums text-[10px] ${endpoint.confidence >= 85
-                                  ? "text-emerald-400"
-                                  : endpoint.confidence >= 65
-                                    ? "text-amber-400"
-                                    : "text-muted-foreground"
-                                  }`}
+                                variant="outline"
+                                className={`text-[10px] ${verificationStyles[endpoint.status] ?? ""}`}
                               >
-                                {endpoint.confidence}%
+                                <span className="flex items-center gap-1">
+                                  {endpoint.status === "verified" || endpoint.status === "healthy" ? (
+                                    <CheckCircle2 className="h-3 w-3" />
+                                  ) : (
+                                    <CircleAlert className="h-3 w-3" />
+                                  )}
+                                  {endpoint.status}
+                                </span>
                               </Badge>
-                            ) : (
-                              <span className="text-xs text-muted-foreground/40">—</span>
-                            )}
-                          </TableCell>
+                            </TableCell>
 
-                          {/* status */}
-                          <TableCell className="text-center">
-                            <Badge
-                              variant="outline"
-                              className={`text-[10px] ${verificationStyles[endpoint.status] ?? ""}`}
-                            >
-                              <span className="flex items-center gap-1">
-                                {endpoint.status === "verified" || endpoint.status === "healthy" ? (
-                                  <CheckCircle2 className="h-3 w-3" />
-                                ) : (
-                                  <CircleAlert className="h-3 w-3" />
-                                )}
-                                {endpoint.status}
-                              </span>
-                            </Badge>
-                          </TableCell>
+                            {/* delete */}
+                            <TableCell>
+                              <button
+                                onClick={() => handleRemoveEndpoint(website.id, endpoint.id)}
+                                className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-[hsl(var(--brand-pink))]/10 hover:text-[hsl(var(--brand-pink))]"
+                                title="Remove endpoint"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
 
-                          {/* delete */}
-                          <TableCell>
-                            <button
-                              onClick={() => handleRemoveEndpoint(website.id, endpoint.id)}
-                              className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-[hsl(var(--brand-pink))]/10 hover:text-[hsl(var(--brand-pink))]"
-                              title="Remove endpoint"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-
-                      {/* empty state row */}
-                      {website.endpoints.length === 0 && (
-                        <TableRow>
-                          <TableCell colSpan={7} className="h-20 text-center text-sm text-muted-foreground">
-                            No endpoints yet. Click "Add Endpoint" to add one.
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))
+                        {/* empty state row */}
+                        {website.endpoints.length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={7} className="h-20 text-center text-sm text-muted-foreground">
+                              No endpoints yet. Click "Add Endpoint" to add one.
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            );
+          })
         )}
       </div>
 

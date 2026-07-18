@@ -82,6 +82,25 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
+// builder.Services.Configure<ApiBehaviorOptions>(options =>
+// {
+//   options.SuppressModelStateInvalidFilter = true;
+// });
+
+builder.Services.AddCors(options =>
+{
+  options.AddPolicy("Development", policy =>
+  {
+    policy
+          .WithOrigins(
+              "http://localhost:5173"
+          )
+          .AllowAnyMethod()
+          .AllowAnyHeader()
+          .AllowCredentials();
+  });
+});
+
 // ======================================================
 // BUILD APP
 // ======================================================
@@ -94,6 +113,7 @@ if (app.Environment.IsDevelopment() || app.Environment.IsStaging())
   app.UseSwaggerUI();
 }
 
+app.UseCors("Development");
 // ======================================================
 // HTTP PIPELINE
 // ======================================================

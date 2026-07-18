@@ -3,12 +3,11 @@
 // =============================================
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
+using SmartApiAnalyzer.Application.Interfaces.Temp_interfaces;
 using SmartApiAnalyzer.Application.Services.Interface.Agents;
 using SmartApiAnalyzer.Application.Services.Interface.Events;
-using SmartApiAnalyzer.Domain.Constants;
 using SmartApiAnalyzer.Domain.Entities.Models.Result.AgentServiceResults;
 using SmartApiAnalyzer.Domain.Events;
-using SmartApiAnalyzer.Domain.Models;
 
 namespace SmartAPiAnalyzer.Infrastructure.Coordination;
 
@@ -18,6 +17,7 @@ public sealed class AgentCoordinator : ICoordinator
   private readonly IAgentSelector _selector;
   private readonly IRealtimeNotifier _notifier;
   private readonly ILogger<AgentCoordinator> _logger;
+  private readonly ITemporaryInMemoryStorage<Object> _tempStorage;
 
   private static readonly TimeSpan AgentTimeout = TimeSpan.FromSeconds(30);
 
@@ -25,13 +25,15 @@ public sealed class AgentCoordinator : ICoordinator
       IAgentRegistry registry,
       IAgentSelector selector,
       IRealtimeNotifier notifier,
-      ILogger<AgentCoordinator> logger
+      ILogger<AgentCoordinator> logger,
+      ITemporaryInMemoryStorage<Object> tempStorage
       )
   {
     _registry = registry;
     _selector = selector;
     _notifier = notifier;
     _logger = logger;
+    _tempStorage = tempStorage;
   }
 
 
@@ -56,7 +58,8 @@ public sealed class AgentCoordinator : ICoordinator
         request.ApprovedRoutesAndMethods,
         statusCode: 200,
         responseTimeMs: 0,
-        timestamp: DateTime.UtcNow)
+        timestamp: DateTime.UtcNow,
+        request.UserSelectedAgents)
     {
       SessionId = sessionId,
     };
@@ -85,6 +88,8 @@ public sealed class AgentCoordinator : ICoordinator
       var result = await ExecuteWithTimeoutAsync(agent, evt, ct);
       results.Add(result);
       MergePayload(evt, agent.Name, result);
+
+      _tempStorage.StoreScanResult(evt.TenantId, agent.Name, result);
 
       await _notifier.NotifyAsync(result.Message, evt, ct);
 

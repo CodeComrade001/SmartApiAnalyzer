@@ -10,33 +10,41 @@ public class TemporaryInMemoryStorage<T> : ITemporaryInMemoryStorage<T>
   private readonly ConcurrentDictionary<string, T> _storage =
       new ConcurrentDictionary<string, T>();
 
-  public bool StoreScanResult(string key, T value)
+  public bool StoreScanResult(Guid tenancyReceivedId, string agentName, T value)
   {
     if (_storage.Count >= MAX_STORAGE)
       return false;
 
+    var key = $"{tenancyReceivedId}:{agentName}";
     return _storage.TryAdd(key, value);
   }
 
-  public T? GetScanResult(string key)
+  public T? GetScanResult(Guid tenancyReceivedId, string agentName)
+
   {
+    var key = $"{tenancyReceivedId}:{agentName}";
     _storage.TryGetValue(key, out var value);
     return value;
   }
 
-  public bool RemoveScanResult(string key)
+  public bool RemoveScanResult(Guid tenancyReceivedId, string agentName)
   {
+    var key = $"{tenancyReceivedId}:{agentName}";
     return _storage.TryRemove(key, out _);
   }
 
-  public int Count()
+  public int Count(Guid tenancyReceivedId)
   {
-    return _storage.Count;
+    return _storage.Count(AbandonedMutexException => AbandonedMutexException.Key.StartsWith($"{tenancyReceivedId}:"));
   }
 
-  public void Clear()
+  public void Clear(Guid tenancyReceivedId)
   {
-    _storage.Clear();
+    var keysToRemove = _storage.Keys.Where(key => key.StartsWith($"{tenancyReceivedId}:")).ToList();
+    foreach (var key in keysToRemove)
+    {
+      _storage.TryRemove(key, out _);
+    }
   }
 }
 

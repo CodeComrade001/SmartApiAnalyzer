@@ -19,10 +19,15 @@ public class ApiScanController : ControllerBase
     [HttpPost("ingest")]
     public async Task<IActionResult> Ingest([FromBody] ApiScanSchema.StartApiScanRequest request, CancellationToken ct)
     {
+        Console.WriteLine(request);
+
         if (!ModelState.IsValid)
             return ValidationProblem(ModelState);
 
         var result = await _ApiScanService.IngestAsync(request, ct);
+        Console.WriteLine(result);
+
+        var debugger = result;
 
         if (!result.Success)
             return BadRequest(result);
