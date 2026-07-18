@@ -60,6 +60,6 @@ public static class ApiScanSchema
     public string DomainUrl { get; set; } = default!;
     public Boolean ScanRequest { get; set; } = false;
     public List<RouteInputDto> RoutesAndEndpoints { get; set; } = new();
+    public List<string> Agents { get; set; } = new();
   }
-
 }

@@ -109,3 +109,4 @@ dist/
 # ignored custom folders
 .sixth/
 notes/
+copilot-instructions.md

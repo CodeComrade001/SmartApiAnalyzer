@@ -1,13 +1,19 @@
-import { z } from "zod";
-
-
 export interface WebsiteApiGroup {
   id: string;
   websiteUrl: string;
   discoveredAt: string;
 
   endpoints: ApiEndpoint[];
+
+  isSaved?: boolean;
+  hasChanges?: boolean;
 }
+
+
+export const HTTP_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
+
+export type HttpMethod = (typeof HTTP_METHODS)[number];
+
 
 export interface ApiEndpoint {
   id: string;
@@ -16,7 +22,7 @@ export interface ApiEndpoint {
 
   correctedPath?: string;
 
-  method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
+  method: HttpMethod;
 
   confidence: number;
 

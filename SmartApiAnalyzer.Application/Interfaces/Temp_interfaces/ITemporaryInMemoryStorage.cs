@@ -4,13 +4,13 @@ namespace SmartApiAnalyzer.Application.Interfaces.Temp_interfaces;
 
 public interface ITemporaryInMemoryStorage<T>
 {
-  bool StoreScanResult(string key, T value);
+  bool StoreScanResult(Guid tenancyReceivedId, string agentName, T result);
 
-  T? GetScanResult(string key);
+  T? GetScanResult(Guid tenancyReceivedId, string agentName);
 
-  bool RemoveScanResult(string key);
+  bool RemoveScanResult(Guid tenancyReceivedId, string agentName);
 
-  int Count();
+  int Count(Guid tenancyReceivedId);
 
-  void Clear();
+  void Clear(Guid tenancyReceivedId);
 }

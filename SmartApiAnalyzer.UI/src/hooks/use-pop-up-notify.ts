@@ -22,7 +22,8 @@ export function usePopUpNotify() {
     message: string,
     type: NotifyType = "info",
     title?: string,
+    duration: number = 5000,
   ) => {
-    notify({ type, title: title ?? DEFAULT_TITLES[type], message });
+    notify({ type, title: title ?? DEFAULT_TITLES[type], message, duration });
   };
 }

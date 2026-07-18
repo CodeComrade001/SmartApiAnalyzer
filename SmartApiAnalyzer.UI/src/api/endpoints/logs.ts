@@ -1,42 +1,47 @@
 import { api } from "../client";
+import { ApiResponse, IngestLogResponse } from "../response/ApiResponse";
 
 export interface IngestLogPayload {
-  endpoint: string;
-  method: string;
-  responseTimeMs: number;
-  statusCode: number;
+  DomainUrl: string;
 }
 
 export interface UpdateEndpointPayload {
-  scanId: string,
-  routesAndEndpoints: { route: string; endpoint: string }[]
+  ScanId: string;
+  RoutesAndEndpoints: RoutesAndEndpointsPayload[];
+}
+
+export interface RoutesAndEndpointsPayload {
+  Route: string;
+  Endpoints: string[];
 }
 
 export interface ScanInitiationSwitchPayload {
-  domainUrl: string;
-  scanRequest: boolean;
-  routesAndEndpoints: { route: string; endpoint: string }[]
-  agents: string[];
+  // ScanId?: string;
+  DomainUrl: string;
+  ScanRequest: boolean;
+  RoutesAndEndpoints: RoutesAndEndpointsPayload[];
+  Agents: string[];
 }
 
-export const ingestLog = async (
+export const ingestDomainUrl = async (
   data: IngestLogPayload
-) => {
-  const response = await api.post(
+): Promise<ApiResponse<IngestLogResponse>> => {
+  const response = await api.post<ApiResponse<IngestLogResponse>>(
     "/api/v1/ingest",
     data
   );
+  console.log("Turbo Log  ~ ingestDomainUrl ~ response:", response);
+
 
   return response.data;
 };
 
 
-export const getAllSans = async (
-
-) => {
+export const getAllSans = async () => {
   const response = await api.get(
     "/api/v1"
   );
+  console.log("Turbo Log  ~ getAllSans ~ response:", response);
 
   return response.data;
 }
@@ -48,6 +53,7 @@ export const updateDomainEndpoint = async (
     "/api/v1/update-endpoint",
     data
   );
+  console.log("Turbo Log  ~ updateDomainEndpoint ~ response:", response);
 
   return response.data;
 }
@@ -59,6 +65,7 @@ export const scanInitiationSwitch = async (
     "/api/v1/start-scan",
     data
   );
+  console.log("Turbo Log  ~ scanInitiationSwitch ~ response:", response);
 
   return response.data;
 }

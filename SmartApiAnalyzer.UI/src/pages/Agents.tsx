@@ -18,8 +18,10 @@ import {
   AGENTS, PRESETS, categoryMeta, presetColorMap, severityConfig, MOCK_RESULTS,
 } from "@/data/agentCatalog";
 import type { AgentKey, AgentCategory, FindingSeverity } from "@/data/agentCatalog";
-import { scanInitiationSwitch, ScanInitiationSwitchPayload } from "@/api/endpoints/logs";
-import { WebsiteApiGroup } from "@/types";
+import { RoutesAndEndpointsPayload, scanInitiationSwitch, ScanInitiationSwitchPayload } from "@/api/endpoints/logs";
+import { ApiEndpoint, WebsiteApiGroup } from "@/types";
+import { usePopUpNotify } from "@/hooks/use-pop-up-notify";
+import { getallMethodEndpointGrouped } from '../components/helpers/getallMethodEndpointGrouped';
 
 /* ─── constants ─── */
 const HTTP_METHOD_COLORS: Record<string, string> = {
@@ -75,6 +77,7 @@ export default function AgentsPage() {
   const [scanState, setScanState] = useState<"idle" | "scanning" | "done">("idle");
   const [progressLabel, setProgressLabel] = useState("");
   const [selectedWebsite, setSelectedWebsite] = useState<WebsiteApiGroup[]>(mockWebsiteApis);
+  const notifyPopUp = usePopUpNotify();
   console.log("Turbo Log  ~ AgentsPage ~ selectedWebsite:", selectedWebsite);
 
   /* ── helpers ── */
@@ -86,8 +89,6 @@ export default function AgentsPage() {
     });
   };
 
-  // const getEndpointUrl = (ep: { inferredPath: string; correctedPath?: string }) =>
-  //   ep.correctedPath?.trim() || ep.inferredPath;
 
   const getSiteTargetCount = (site: WebsiteApiGroup) => {
     const isSiteAvailable = mockWebsiteApis.find((s) => s.id === site.id);
@@ -105,21 +106,6 @@ export default function AgentsPage() {
     else addScanTarget(site);
   };
 
-  // const handleAddCustomUrl = () => {
-  //   const url = customUrl.trim();
-  //   if (!url) return;
-  //   if (!url.startsWith("http://") && !url.startsWith("https://")) {
-  //     notify({ type: "error", title: "Invalid URL format", message: `"${url}" must start with http:// or https://.` });
-  //     return;
-  //   }
-  //   if (scanTargets.includes(url)) {
-  //     notify({ type: "warning", title: "Already in Mission Brief", message: `${url} is already a scan target.` });
-  //     return;
-  //   }
-  //   addScanTarget(url);
-  //   setCustomUrl("");
-  //   notify({ type: "success", title: "Target added", message: `${url} added to your Mission Brief scan targets.` });
-  // };
 
   const handlePresetClick = (preset: typeof PRESETS[number]) => {
     setActivePreset(preset.id);
@@ -134,6 +120,7 @@ export default function AgentsPage() {
     for (const a of AGENTS) { if (!map[a.category]) map[a.category] = []; map[a.category]!.push(a); }
     return map as Record<AgentCategory, typeof AGENTS>;
   }, []);
+
 
   /* ── launch scan ── */
   const handleRunScan = async () => {
@@ -195,18 +182,21 @@ export default function AgentsPage() {
           }. Waiting for the scan engine to accept the request.`,
       });
 
-      scanTargets.map((site) => {
+      const groupedResult = getallMethodEndpointGrouped(scanTargets.flatMap((site) => site.endpoints));
+      if (!groupedResult || groupedResult.length === 0) return notifyPopUp("The selected scan targets do not contain any valid endpoints to scan.", "error", "No valid endpoints found");
 
-      })
+      const normalizePayload: ScanInitiationSwitchPayload[] = scanTargets.map(
+        (site) => ({
+          DomainUrl: site.websiteUrl,
+          ScanRequest: false,
+          RoutesAndEndpoints: groupedResult,
+          Agents: [...selectedAgents],
+        })
+      );
 
-      const payload: ScanInitiationSwitchPayload = {
-        domainUrl: "", // Replace with your selected domain
-        scanRequest: false,
-        routesAndEndpoints: [],
-        agents: [],
-      };
+      const response = await scanInitiationSwitch(normalizePayload);
 
-      // const response = await scanInitiationSwitch(payload);
+      if (!response.success) return notify({ type: "error", title: "Scan initiation failed", message: response.message || "An unexpected error occurred while initiating the scan." });
 
       // Save scan id if returned
       // if (response.scanId) {
