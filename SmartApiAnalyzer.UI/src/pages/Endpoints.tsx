@@ -1,11 +1,11 @@
-import { useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Search, Globe, CheckCircle2, CircleAlert, Plus, Save, ArrowRight, Link2, Trash2, AlertTriangle, } from "lucide-react";
+import { Search, Globe, CheckCircle2, CircleAlert, Plus, Save, ArrowRight, Link2, Trash2, AlertTriangle, ChevronDown, } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ApiEndpoint, HTTP_METHODS, HttpMethod, WebsiteApiGroup } from "@/types";
 import { ingestDomainUrl, RoutesAndEndpointsPayload, updateDomainEndpoint, UpdateEndpointPayload } from "@/api/endpoints/logs";
@@ -30,6 +30,20 @@ const methodStyles: Record<HttpMethod, string> = {
   DELETE: "bg-[hsl(var(--brand-pink))]/15 text-[hsl(var(--brand-pink))] border-[hsl(var(--brand-pink))]/30",
   PATCH: "bg-[hsl(var(--brand-violet))]/15 text-[hsl(var(--brand-violet))] border-[hsl(var(--brand-violet))]/30",
 };
+
+/* NEW: HTTP methods that typically carry a request body. DELETE/GET are left out by default
+   since they're usually bodyless — adjust here if your API needs DELETE-with-body support. */
+const METHODS_WITH_PAYLOAD: HttpMethod[] = ["POST", "PUT", "PATCH"];
+
+/* NEW: local, additive extension of ApiEndpoint — avoids touching the shared type definition.
+   `payload` is a free-typed sample request body (raw text, e.g. JSON) entered by the user,
+   not inferred or schema-validated. */
+type ApiEndpointWithPayload = ApiEndpoint & { payload?: string };
+
+/* NEW: safe read of the sample payload, defaulting to an empty string for endpoints that
+   don't have one set yet. */
+const getEndpointPayload = (endpoint: ApiEndpoint): string =>
+  (endpoint as ApiEndpointWithPayload).payload ?? "";
 
 const verificationStyles: Record<string, string> = {
   verified: "bg-[hsl(var(--brand-emerald))]/15 text-[hsl(var(--brand-emerald))] border-[hsl(var(--brand-emerald))]/30",
@@ -81,6 +95,52 @@ export default function ApiDiscovery() {
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [isDiscovering, setIsDiscovering] = useState(false);
   const [websiteGroups, setWebsiteGroups] = useState<WebsiteApiGroup[]>([]);
+
+  /* NEW: which endpoints currently have their sample-payload box open. UI-only state —
+     doesn't touch websiteGroups, so collapsing/expanding never marks anything unsaved. */
+  const [expandedPayloadIds, setExpandedPayloadIds] = useState<Set<string>>(new Set());
+  const payloadCollapseTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
+  /* NEW: open a payload box, cancelling any pending auto-collapse for it */
+  const openPayloadBox = (endpointId: string) => {
+    if (payloadCollapseTimers.current[endpointId]) {
+      clearTimeout(payloadCollapseTimers.current[endpointId]);
+      delete payloadCollapseTimers.current[endpointId];
+    }
+    setExpandedPayloadIds((prev) => {
+      const next = new Set(prev);
+      next.add(endpointId);
+      return next;
+    });
+  };
+
+  /* NEW: schedule a payload box to auto-collapse a few seconds after the user leaves it.
+     Their text is already saved in websiteGroups on every keystroke — this only hides the box. */
+  const scheduleCollapse = (endpointId: string) => {
+    payloadCollapseTimers.current[endpointId] = setTimeout(() => {
+      setExpandedPayloadIds((prev) => {
+        const next = new Set(prev);
+        next.delete(endpointId);
+        return next;
+      });
+      delete payloadCollapseTimers.current[endpointId];
+    }, 2500);
+  };
+
+  /* NEW: cancel a pending auto-collapse, e.g. when focus returns to the textarea */
+  const cancelCollapse = (endpointId: string) => {
+    if (payloadCollapseTimers.current[endpointId]) {
+      clearTimeout(payloadCollapseTimers.current[endpointId]);
+      delete payloadCollapseTimers.current[endpointId];
+    }
+  };
+
+  /* NEW: clear any pending timers on unmount so they don't fire against a gone component */
+  useEffect(() => {
+    return () => {
+      Object.values(payloadCollapseTimers.current).forEach(clearTimeout);
+    };
+  }, []);
 
   /* search filter */
   const filteredWebsites = useMemo(() => {
@@ -193,6 +253,74 @@ export default function ApiDiscovery() {
         }
         return { ...w, endpoints: updated, isSaved: false, hasChanges: true };
       })
+    );
+  };
+
+  /* NEW: select or deselect every endpoint in a website group */
+  const handleSelectAllEndpoints = (websiteId: string, select: boolean) => {
+    let affectedCount = 0;
+    setWebsiteGroups((prev) =>
+      prev.map((w) => {
+        if (w.id !== websiteId) return w;
+        affectedCount = w.endpoints.length;
+        return {
+          ...w,
+          endpoints: w.endpoints.map((e) => ({ ...e, selected: select })),
+          isSaved: false,
+          hasChanges: true,
+        };
+      })
+    );
+    notifyPopUp(
+      select
+        ? `All ${affectedCount} endpoint${affectedCount !== 1 ? "s" : ""} added to scan targets`
+        : `All endpoints removed from scan targets`,
+      select ? "success" : "info",
+      select ? "All endpoints selected" : "All endpoints deselected",
+    );
+  };
+
+  /* NEW: select or deselect every endpoint of a given HTTP method within a website group */
+  const handleSelectEndpointsByMethod = (websiteId: string, method: HttpMethod, select: boolean) => {
+    let affectedCount = 0;
+    setWebsiteGroups((prev) =>
+      prev.map((w) => {
+        if (w.id !== websiteId) return w;
+        affectedCount = w.endpoints.filter((e) => e.method === method).length;
+        return {
+          ...w,
+          endpoints: w.endpoints.map((e) =>
+            e.method === method ? { ...e, selected: select } : e
+          ),
+          isSaved: false,
+          hasChanges: true,
+        };
+      })
+    );
+    notifyPopUp(
+      select
+        ? `${affectedCount} ${method} endpoint${affectedCount !== 1 ? "s" : ""} added to scan targets`
+        : `${affectedCount} ${method} endpoint${affectedCount !== 1 ? "s" : ""} removed from scan targets`,
+      select ? "success" : "info",
+      select ? `${method} endpoints selected` : `${method} endpoints deselected`,
+    );
+  };
+
+  /* NEW: update an endpoint's sample payload — plain free text, no schema inferred or enforced */
+  const handlePayloadChange = (websiteId: string, endpointId: string, value: string) => {
+    setWebsiteGroups((prev) =>
+      prev.map((w) =>
+        w.id !== websiteId
+          ? w
+          : {
+            ...w,
+            endpoints: w.endpoints.map((e) =>
+              e.id !== endpointId ? e : ({ ...e, payload: value } as ApiEndpoint)
+            ),
+            isSaved: false,
+            hasChanges: true,
+          }
+      )
     );
   };
 
@@ -421,6 +549,9 @@ export default function ApiDiscovery() {
           filteredWebsites.map((website, index) => {
             // NEW: derive a single boolean used purely for display — does not affect any API call
             const isUnsaved = !website.isSaved || website.hasChanges;
+            // NEW: distinct HTTP methods present in this website's endpoints, used to render per-method bulk select buttons
+            const methodsPresent = Array.from(new Set(website.endpoints.map((e) => e.method))) as HttpMethod[];
+            const allEndpointsSelected = website.endpoints.length > 0 && website.endpoints.every((e) => e.selected);
             return (
               <motion.div
                 key={website.id}
@@ -475,11 +606,63 @@ export default function ApiDiscovery() {
                     </div>
                   </CardHeader>
 
+                  {/* NEW: bulk selection toolbar — select/deselect all, and select/deselect by HTTP method */}
+                  {website.endpoints.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-2 px-6 pb-4 -mt-2">
+                      <span className="text-xs text-muted-foreground mr-1">Bulk select:</span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => handleSelectAllEndpoints(website.id, true)}
+                        disabled={allEndpointsSelected}
+                      >
+                        Select All
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => handleSelectAllEndpoints(website.id, false)}
+                        disabled={website.endpoints.every((e) => !e.selected)}
+                      >
+                        Deselect All
+                      </Button>
+                      <span className="mx-1 h-4 w-px bg-border" />
+                      {methodsPresent.map((m) => {
+                        const methodEndpoints = website.endpoints.filter((e) => e.method === m);
+                        const allMethodSelected = methodEndpoints.length > 0 && methodEndpoints.every((e) => e.selected);
+                        return (
+                          <Button
+                            key={m}
+                            variant="outline"
+                            size="sm"
+                            className={`h-7 text-xs font-mono ${methodStyles[m]}`}
+                            onClick={() => handleSelectEndpointsByMethod(website.id, m, !allMethodSelected)}
+                          >
+                            {allMethodSelected ? `Deselect ${m}` : `Select ${m}`}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                  )}
+
                   <CardContent className="p-0">
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="w-[52px]">Use</TableHead>
+                          <TableHead className="w-[52px]">
+                            {/* NEW: header checkbox mirrors Select All / Deselect All for quick access */}
+                            {website.endpoints.length > 0 ? (
+                              <Checkbox
+                                checked={allEndpointsSelected}
+                                onCheckedChange={(checked) => handleSelectAllEndpoints(website.id, checked === true)}
+                                title={allEndpointsSelected ? "Deselect all" : "Select all"}
+                              />
+                            ) : (
+                              "Use"
+                            )}
+                          </TableHead>
                           <TableHead className="w-[110px]">Method</TableHead>
                           <TableHead>Discovered Endpoint</TableHead>
                           <TableHead>Correct API URL</TableHead>
@@ -490,71 +673,72 @@ export default function ApiDiscovery() {
                       </TableHeader>
                       <TableBody>
                         {website.endpoints.map((endpoint) => (
-                          <TableRow key={endpoint.id} className={endpoint.selected ? "" : "opacity-60"}>
-                            {/* select */}
-                            <TableCell>
-                              <Checkbox
-                                checked={endpoint.selected}
-                                onCheckedChange={() => handleToggleEndpoint(website.id, endpoint.id)}
-                              />
-                            </TableCell>
+                          <Fragment key={endpoint.id}>
+                            <TableRow className={endpoint.selected ? "" : "opacity-60"}>
+                              {/* select */}
+                              <TableCell>
+                                <Checkbox
+                                  checked={endpoint.selected}
+                                  onCheckedChange={() => handleToggleEndpoint(website.id, endpoint.id)}
+                                />
+                              </TableCell>
 
-                            {/* method dropdown */}
-                            <TableCell>
-                              <MethodSelect
-                                value={endpoint.method as HttpMethod}
-                                onChange={(m) => handleMethodChange(website.id, endpoint.id, m)}
-                              />
-                            </TableCell>
+                              {/* method dropdown */}
+                              <TableCell>
+                                <MethodSelect
+                                  value={endpoint.method as HttpMethod}
+                                  onChange={(m) => handleMethodChange(website.id, endpoint.id, m)}
+                                />
+                              </TableCell>
 
-                            {/* discovered path — editable if blank */}
-                            <TableCell>
-                              {endpoint.inferredPath ? (
-                                <span className="font-mono text-xs truncate max-w-[200px] block">
-                                  {endpoint.inferredPath}
-                                </span>
-                              ) : (
-                                <Input
-                                  placeholder="https://api.example.com/path"
-                                  className="h-7 font-mono text-xs"
-                                  value={endpoint.inferredPath}
-                                  onChange={(e) =>
-                                    setWebsiteGroups((prev) =>
-                                      prev.map((w) =>
-                                        w.id !== website.id
-                                          ? w
-                                          : {
-                                            ...w,
-                                            endpoints: w.endpoints.map((ep) =>
-                                              ep.id !== endpoint.id
-                                                ? ep
-                                                : { ...ep, inferredPath: e.target.value }
-                                            ),
-                                            // NEW: editing the discovered path also invalidates saved state
-                                            isSaved: false,
-                                            hasChanges: true,
-                                          }
+                              {/* discovered path — editable if blank */}
+                              <TableCell>
+                                {endpoint.inferredPath ? (
+                                  <span className="font-mono text-xs truncate max-w-[200px] block">
+                                    {endpoint.inferredPath}
+                                  </span>
+                                ) : (
+                                  <Input
+                                    placeholder="https://api.example.com/path"
+                                    className="h-7 font-mono text-xs"
+                                    value={endpoint.inferredPath}
+                                    onChange={(e) =>
+                                      setWebsiteGroups((prev) =>
+                                        prev.map((w) =>
+                                          w.id !== website.id
+                                            ? w
+                                            : {
+                                              ...w,
+                                              endpoints: w.endpoints.map((ep) =>
+                                                ep.id !== endpoint.id
+                                                  ? ep
+                                                  : { ...ep, inferredPath: e.target.value }
+                                              ),
+                                              // NEW: editing the discovered path also invalidates saved state
+                                              isSaved: false,
+                                              hasChanges: true,
+                                            }
+                                        )
                                       )
-                                    )
+                                    }
+                                  />
+                                )}
+                              </TableCell>
+
+                              {/* corrected URL */}
+                              <TableCell>
+                                <Input
+                                  value={endpoint.correctedPath ?? ""}
+                                  placeholder="Enter correct API URL…"
+                                  className="h-7 font-mono text-xs"
+                                  onChange={(e) =>
+                                    handleApiUrlChange(website.id, endpoint.id, e.target.value)
                                   }
                                 />
-                              )}
-                            </TableCell>
+                              </TableCell>
 
-                            {/* corrected URL */}
-                            <TableCell>
-                              <Input
-                                value={endpoint.correctedPath ?? ""}
-                                placeholder="Enter correct API URL…"
-                                className="h-7 font-mono text-xs"
-                                onChange={(e) =>
-                                  handleApiUrlChange(website.id, endpoint.id, e.target.value)
-                                }
-                              />
-                            </TableCell>
-
-                            {/* confidence */}
-                            {/* <TableCell className="text-center">
+                              {/* confidence */}
+                              {/* <TableCell className="text-center">
                               {endpoint.confidence > 0 ? (
                                 <Badge
                                   variant="secondary"
@@ -572,34 +756,80 @@ export default function ApiDiscovery() {
                               )}
                             </TableCell> */}
 
-                            {/* status */}
-                            <TableCell className="text-center">
-                              <Badge
-                                variant="outline"
-                                className={`text-[10px] ${verificationStyles[endpoint.status] ?? ""}`}
-                              >
-                                <span className="flex items-center gap-1">
-                                  {endpoint.status === "verified" || endpoint.status === "healthy" ? (
-                                    <CheckCircle2 className="h-3 w-3" />
-                                  ) : (
-                                    <CircleAlert className="h-3 w-3" />
-                                  )}
-                                  {endpoint.status}
-                                </span>
-                              </Badge>
-                            </TableCell>
+                              {/* status */}
+                              <TableCell className="text-center">
+                                <Badge
+                                  variant="outline"
+                                  className={`text-[10px] ${verificationStyles[endpoint.status] ?? ""}`}
+                                >
+                                  <span className="flex items-center gap-1">
+                                    {endpoint.status === "verified" || endpoint.status === "healthy" ? (
+                                      <CheckCircle2 className="h-3 w-3" />
+                                    ) : (
+                                      <CircleAlert className="h-3 w-3" />
+                                    )}
+                                    {endpoint.status}
+                                  </span>
+                                </Badge>
+                              </TableCell>
 
-                            {/* delete */}
-                            <TableCell>
-                              <button
-                                onClick={() => handleRemoveEndpoint(website.id, endpoint.id)}
-                                className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-[hsl(var(--brand-pink))]/10 hover:text-[hsl(var(--brand-pink))]"
-                                title="Remove endpoint"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </button>
-                            </TableCell>
-                          </TableRow>
+                              {/* delete */}
+                              <TableCell>
+                                <button
+                                  onClick={() => handleRemoveEndpoint(website.id, endpoint.id)}
+                                  className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-[hsl(var(--brand-pink))]/10 hover:text-[hsl(var(--brand-pink))]"
+                                  title="Remove endpoint"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              </TableCell>
+                            </TableRow>
+
+                            {/* NEW: sample payload — collapsed by default to cut noise. Only for methods
+                              that carry a request body. Click to open; it auto-collapses a couple
+                              seconds after you leave it. Your text is saved as you type, regardless
+                              of whether the box is open or closed. */}
+                            {METHODS_WITH_PAYLOAD.includes(endpoint.method as HttpMethod) && (
+                              <TableRow className="hover:bg-transparent">
+                                <TableCell colSpan={6} className="pt-0 pb-2">
+                                  <div className="pl-1">
+                                    {expandedPayloadIds.has(endpoint.id) ? (
+                                      <>
+                                        <label className="mb-1 flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                                          Sample Payload
+                                          <span className="font-mono normal-case text-muted-foreground/60">
+                                            ({endpoint.method} body — free text, not validated)
+                                          </span>
+                                        </label>
+                                        <textarea
+                                          autoFocus
+                                          value={getEndpointPayload(endpoint)}
+                                          onChange={(e) => handlePayloadChange(website.id, endpoint.id, e.target.value)}
+                                          onFocus={() => cancelCollapse(endpoint.id)}
+                                          onBlur={() => scheduleCollapse(endpoint.id)}
+                                          placeholder={'{\n  "example": "value"\n}'}
+                                          rows={4}
+                                          spellCheck={false}
+                                          className="w-full resize-y rounded-lg border bg-background/60 px-3 py-2 font-mono text-xs leading-relaxed text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-offset-background"
+                                        />
+                                      </>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        onClick={() => openPayloadBox(endpoint.id)}
+                                        className="flex items-center gap-1 text-[11px] text-muted-foreground/70 transition hover:text-foreground"
+                                      >
+                                        <ChevronDown className="h-3 w-3 -rotate-90" />
+                                        {getEndpointPayload(endpoint).trim().length > 0
+                                          ? "Sample payload set — click to edit"
+                                          : `Add sample ${endpoint.method} payload`}
+                                      </button>
+                                    )}
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            )}
+                          </Fragment>
                         ))}
 
                         {/* empty state row */}
