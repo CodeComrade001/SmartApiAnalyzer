@@ -2,7 +2,7 @@ using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
 using SmartApiAnalyzer.Application.Services.Interface.Agents;
 
-namespace SmartApiAnalyzer.Infrastructure.Services;
+namespace SmartApiAnalyzer.Application.Services.Agents;
 
 public sealed class CredentialExposureService : ICredentialExposureService
 {
@@ -38,7 +38,7 @@ public sealed class CredentialExposureService : ICredentialExposureService
 
     public CredentialExposureService(IHttpClientFactory factory, ILogger<CredentialExposureService> logger)
     {
-        _http   = factory.CreateClient("CredentialClient");
+        _http = factory.CreateClient("CredentialClient");
         _logger = logger;
     }
 
@@ -47,7 +47,7 @@ public sealed class CredentialExposureService : ICredentialExposureService
         try
         {
             using var resp = await _http.GetAsync(uri, HttpCompletionOption.ResponseContentRead, ct);
-            var body       = await resp.Content.ReadAsStringAsync(ct);
+            var body = await resp.Content.ReadAsStringAsync(ct);
 
             var respHeaders = resp.Headers
                 .Concat(resp.Content.Headers)
@@ -58,7 +58,7 @@ public sealed class CredentialExposureService : ICredentialExposureService
             var hasLoginForm = DetectLoginForm(body);
 
             // ── 2. Cookie security inspection ─────────────────────────────
-            var cookieSecure   = false;
+            var cookieSecure = false;
             var cookieHttpOnly = false;
             var cookieSameSite = "None";
 
@@ -67,8 +67,8 @@ public sealed class CredentialExposureService : ICredentialExposureService
                 foreach (var cookie in cookies)
                 {
                     var parts = cookie.Split(';').Select(p => p.Trim()).ToList();
-                    cookieSecure   = cookieSecure   || parts.Any(p => p.Equals("Secure",   StringComparison.OrdinalIgnoreCase));
-                    cookieHttpOnly = cookieHttpOnly || parts.Any(p => p.Equals("HttpOnly",  StringComparison.OrdinalIgnoreCase));
+                    cookieSecure = cookieSecure || parts.Any(p => p.Equals("Secure", StringComparison.OrdinalIgnoreCase));
+                    cookieHttpOnly = cookieHttpOnly || parts.Any(p => p.Equals("HttpOnly", StringComparison.OrdinalIgnoreCase));
                     var ss = parts.FirstOrDefault(p => p.StartsWith("SameSite=", StringComparison.OrdinalIgnoreCase));
                     if (ss is not null) cookieSameSite = ss.Split('=', 2)[1].Trim();
                 }
@@ -92,26 +92,26 @@ public sealed class CredentialExposureService : ICredentialExposureService
             double risk = 0;
 
             if (hasLoginForm && uri.Scheme != "https") risk += 40;
-            if (!cookieSecure   && hasLoginForm)        risk += 15;
-            if (!cookieHttpOnly && hasLoginForm)        risk += 10;
-            if (cookieSameSite  == "None")              risk += 10;
+            if (!cookieSecure && hasLoginForm) risk += 15;
+            if (!cookieHttpOnly && hasLoginForm) risk += 10;
+            if (cookieSameSite == "None") risk += 10;
             risk += missingHeaders.Count * 5;
-            if (exposedSecretsFound)                    risk += 30 * exposedTypes.Count;
+            if (exposedSecretsFound) risk += 30 * exposedTypes.Count;
 
             risk = Math.Min(risk, 100);
 
             return new CredentialExposureResult
             {
-                HasLoginForm        = hasLoginForm,
-                UsesHttps           = uri.Scheme == "https",
-                CookieSecure        = cookieSecure,
-                CookieHttpOnly      = cookieHttpOnly,
-                CookieSameSite      = !string.Equals(cookieSameSite, "None", StringComparison.OrdinalIgnoreCase),
-                MissingHeaders      = missingHeaders,
+                HasLoginForm = hasLoginForm,
+                UsesHttps = uri.Scheme == "https",
+                CookieSecure = cookieSecure,
+                CookieHttpOnly = cookieHttpOnly,
+                CookieSameSite = !string.Equals(cookieSameSite, "None", StringComparison.OrdinalIgnoreCase),
+                MissingHeaders = missingHeaders,
                 ExposedSecretsFound = exposedSecretsFound,
-                ExposedSecretTypes  = exposedTypes,
-                RiskScore           = risk,
-                IsCriticalRisk      = risk >= 70 || exposedSecretsFound,
+                ExposedSecretTypes = exposedTypes,
+                RiskScore = risk,
+                IsCriticalRisk = risk >= 70 || exposedSecretsFound,
             };
         }
         catch (Exception ex) when (ex is not OperationCanceledException)

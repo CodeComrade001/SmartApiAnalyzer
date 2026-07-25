@@ -19,10 +19,12 @@ public class ApiScanService : IApiScanService
   private readonly IGateKeeperAgent _gatekeeperAgent;
   private readonly IEventBus _eventBus;
   public readonly ITemporaryInMemoryStorage<ApiScanSchema.ApiScanResultResponse> _temporaryStorage;
+  private readonly IRealtimeNotifier _notifier;
 
   public ApiScanService(
-      // IApiScanRepository scanRepository,
-      IGateKeeperAgent gatekeeperAgent,
+       // IApiScanRepository scanRepository,
+       IRealtimeNotifier notifier,
+  IGateKeeperAgent gatekeeperAgent,
       ITemporaryInMemoryStorage<ApiScanSchema.ApiScanResultResponse> temporaryStorage,
       IEventBus eventBus)
   {
@@ -30,6 +32,7 @@ public class ApiScanService : IApiScanService
     _temporaryStorage = temporaryStorage;
     _gatekeeperAgent = gatekeeperAgent;
     _eventBus = eventBus;
+    _notifier = notifier;
   }
 
   /*//////////////////////////////////////////////////////////////

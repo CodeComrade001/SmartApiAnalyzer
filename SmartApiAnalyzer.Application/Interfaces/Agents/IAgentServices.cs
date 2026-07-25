@@ -1,4 +1,5 @@
 using SmartApiAnalyzer.Domain.Entities.Models.Result.AgentServiceResults;
+using SmartApiAnalyzer.Domain.Entities.Models.Result.EndpointPipelineResultContext;
 
 namespace SmartApiAnalyzer.Application.Services.Interface.Agents;
 
@@ -11,7 +12,7 @@ public interface IUrlValidationService
 
 public interface IEndpointDiscoveryService
 {
-    Task<EndpointDiscoveryResult> DiscoverAsync(Uri uri, CancellationToken ct);
+    Task<EndpointDiscoveryResult> DiscoverAsync(Uri website, CancellationToken ct);
 }
 
 public interface IThreatIntelService

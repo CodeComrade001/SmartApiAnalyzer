@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 using SmartApiAnalyzer.Application.Services.Interface.Agents;
 using SmartApiAnalyzer.Domain.Entities.Models.Result.AgentServiceResults;
 
-namespace SmartApiAnalyzer.Infrastructure.Services;
+namespace SmartApiAnalyzer.Application.Services.Agents;
 
 /// <summary>
 /// Detects domain hijacking vulnerabilities:

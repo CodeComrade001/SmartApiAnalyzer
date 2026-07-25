@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using SmartApiAnalyzer.Application.Services.Interface.Events;
+using SmartApiAnalyzer.Domain.Events;
 
 public class LogProcessingWorker : BackgroundService
 {
@@ -32,7 +33,11 @@ public class LogProcessingWorker : BackgroundService
           scope.ServiceProvider.GetRequiredService<ICoordinator>();
 
       await notifier.NotifyAsync(
-          "New log received; processing started",
+          new AgentProgressMessage
+          {
+            ScanId = sessionId,
+            Message = "New log received; processing started"
+          },
           evt);
 
       await coordinator.RunAsync(sessionId, evt, stoppingToken);

@@ -1,11 +1,12 @@
 using System.Diagnostics;
 using SmartApiAnalyzer.Application.Services.Interface.Agents;
 using SmartApiAnalyzer.Domain.Events;
-using SmartApiAnalyzer.Infrastructure.Agents.Factory;
 using SmartApiAnalyzer.Domain.Constants;
 using Infrastructure.Common;
 using SmartApiAnalyzer.Domain.Entities.Models.Result.AgentServiceResults;
 using SmartApiAnalyzer.Domain.Entities.Payload;
+using SmartApiAnalyzer.Domain.Enums;
+using SmartApiAnalyzer.Domain.Entities.Models.Result.EndpointPipelineResultContext;
 
 namespace SmartApiAnalyzer.Infrastructure.Agents;
 
@@ -51,27 +52,18 @@ public sealed class GateKeeper_Agent : IGateKeeperAgent
 
       if (string.IsNullOrWhiteSpace(rawUrl))
       {
-        return AgentRequestFactory.Ok<GateKeeperPayload>(
-            Name,
-            "Input URL is required.",
-            sw.Elapsed);
+        return Stop("Input URL is required.", sw.Elapsed, AgentSeverity.Warning);
       }
 
       if (!Uri.TryCreate(rawUrl, UriKind.Absolute, out var uri))
       {
-        return AgentRequestFactory.Ok<GateKeeperPayload>(
-            Name,
-            "Invalid absolute URL.",
-            sw.Elapsed);
+        return Stop("Invalid absolute URL.", sw.Elapsed, AgentSeverity.Warning);
       }
 
-      // if (!IsSupportedScheme(uri))
-      // {
-      //   return AgentRequestFactory.Ok<GateKeeperPayload>(
-      //       Name,
-      //       "Only HTTP/HTTPS URLs are supported.",
-      //       sw.Elapsed);
-      // }
+      if (!IsSupportedScheme(uri))
+      {
+        return Stop("Only HTTP/HTTPS URLs are supported.", sw.Elapsed, AgentSeverity.Warning);
+      }
 
       // Threat intelligence scan
       AppLogger.Log("Threat scan starting...");
@@ -80,56 +72,63 @@ public sealed class GateKeeper_Agent : IGateKeeperAgent
 
       if (threatResult.IsMalicious)
       {
-        return AgentRequestFactory.Ok<GateKeeperPayload>(
-            Name,
-            $"Blocked suspicious domain: {uri.Host}",
-            sw.Elapsed);
+        return Stop($"Blocked suspicious domain: {uri.Host}", sw.Elapsed, AgentSeverity.Critical);
       }
 
       // Discover routes
       AppLogger.Log("domainUrl discovery starting...");
       var discovered = await _endpointDiscovery.DiscoverAsync(uri, ct);
       AppLogger.Log("domainUrl discovery done.");
-
-      var routes = discovered.DiscoveredRoutes
-          .Where((string x) => !string.IsNullOrWhiteSpace(x))
-          .Select(NormalizeEndpoint)
-          .Distinct(StringComparer.OrdinalIgnoreCase)
-          .OrderBy(x => x)
-          .ToList();
-
-      if (routes.Count == 0)
+      var seeDiscoveredResult = discovered;
+      // A failed discovery pipeline is not itself grounds to stop downstream agents —
+      // security/perf agents can still run against the bare host — but it MUST be
+      // visible, not silently swallowed into a false "safe: true".
+      if (discovered.Status == PipelineStatus.Failed)
       {
-        routes.Add("/");
+        var failurePayload = BuildPayload(uri, threatResult, discovered, safe: false);
+        return AgentResult<GateKeeperPayload>.CreateWarning(
+            Name,
+            $"Endpoint discovery failed for {uri.Host}: {discovered.FailureReason ?? "unknown error"}. Downstream agents will operate with no discovered routes.",
+            sw.Elapsed,
+            failurePayload);
       }
 
-      // Build route + method payload
-      var routePayload = routes
-          .Select(route => new EndpointRouteDto
+      var routes = discovered.Endpoints
+          .Select(e => new EndpointRouteDto
           {
-            route = route,
-            methods = InferMethods(route)
+            route = e.Path,
+            methods = e.SupportedMethods.Select(m => m.Method).ToList(),
           })
           .ToList();
 
-      var payload =
-          new GateKeeperPayload
-          {
-            domainUrl = $"{uri.Scheme}://{uri.Host}",
-            host = uri.Host,
-            scheme = uri.Scheme,
-            port = uri.Port,
-            routesPayload = routePayload,
-            endpointCount = routePayload.Count,
-            threatScore = threatResult.Score,
-            safe = true
-          };
+      // Fallback so downstream agents always have at least the root to probe,
+      // consistent with the original (commented-out) intent.
+      if (routes.Count == 0)
+      {
+        routes.Add(new EndpointRouteDto { route = "/", methods = ["GET", "HEAD", "OPTIONS"] });
+      }
 
-      return AgentRequestFactory.Ok(
-          Name,
-          $"Validated domain and discovered {routePayload.Count} endpoint(s).",
-          sw.Elapsed,
-          payload);
+      var isPartial = discovered.Status == PipelineStatus.PartiallyCompleted;
+
+      var payload = new GateKeeperPayload
+      {
+        domainUrl = $"{uri.Scheme}://{uri.Host}",
+        host = uri.Host,
+        scheme = uri.Scheme,
+        port = uri.Port,
+        routesPayload = routes,
+        endpointCount = routes.Count,
+        threatScore = threatResult.Score,
+        safe = !threatResult.IsMalicious,
+      };
+
+      var message = isPartial
+          ? $"Validated domain and discovered {routes.Count} endpoint(s) (discovery partially completed — some enrichment stages failed)."
+          : $"Validated domain and discovered {routes.Count} endpoint(s).";
+
+      return isPartial
+          ? AgentResult<GateKeeperPayload>.CreateWarning(Name, message, sw.Elapsed, payload)
+          : AgentResult<GateKeeperPayload>.CreateOk(Name, message, sw.Elapsed, payload);
     }
     catch (OperationCanceledException) when (ct.IsCancellationRequested)
     {
@@ -137,10 +136,7 @@ public sealed class GateKeeper_Agent : IGateKeeperAgent
     }
     catch (Exception ex)
     {
-      return AgentRequestFactory.Ok<GateKeeperPayload>(
-          Name,
-          $"Unhandled validation error: {ex.Message}",
-          sw.Elapsed);
+      return Stop($"Unhandled validation error: {ex.Message}", sw.Elapsed, AgentSeverity.Critical);
     }
     finally
     {
@@ -148,49 +144,42 @@ public sealed class GateKeeper_Agent : IGateKeeperAgent
     }
   }
 
+  /// <summary>
+  /// Constructs a pipeline-halting result. AgentRequestFactory currently has no
+  /// stop-capable factory method (only CreateOk/CreateWarning, neither of which can set
+  /// StopProcessing = true), so this bypasses it via direct construction. Flagging as a
+  /// gap: recommend adding AgentRequestFactory.CreateStop(...) so no caller needs to do
+  /// this by hand and risk forgetting the flag.
+  /// </summary>
+  private AgentResult<GateKeeperPayload> Stop(string message, TimeSpan elapsed, AgentSeverity severity) =>
+      new()
+      {
+        AgentName = Name,
+        Success = false,
+        StopProcessing = true,
+        Message = message,
+        Severity = severity,
+        Elapsed = elapsed,
+        Payload = default,
+      };
+
+  private static GateKeeperPayload BuildPayload(
+      Uri uri, ThreatIntelResult threatResult, EndpointDiscoveryResult discovered, bool safe) =>
+      new()
+      {
+        domainUrl = $"{uri.Scheme}://{uri.Host}",
+        host = uri.Host,
+        scheme = uri.Scheme,
+        port = uri.Port,
+        routesPayload = discovered.Endpoints
+              .Select(e => new EndpointRouteDto { route = e.Path, methods = e.SupportedMethods.Select(m => m.Method).ToList() })
+              .ToList(),
+        endpointCount = discovered.Endpoints.Count,
+        threatScore = threatResult.Score,
+        safe = safe,
+      };
+
   private static bool IsSupportedScheme(Uri uri) =>
       uri.Scheme == Uri.UriSchemeHttp ||
       uri.Scheme == Uri.UriSchemeHttps;
-
-  private static string NormalizeEndpoint(string endpoint)
-  {
-    if (string.IsNullOrWhiteSpace(endpoint))
-      return "/";
-
-    endpoint = endpoint.Trim();
-
-    if (!endpoint.StartsWith("/"))
-      endpoint = "/" + endpoint;
-
-    return endpoint.ToLowerInvariant();
-  }
-
-  /// <summary>
-  /// Safe heuristic inference.
-  /// Replace later with OPTIONS / Swagger / OpenAPI parser.
-  /// </summary>
-  private static List<string> InferMethods(string route)
-  {
-    route = route.ToLowerInvariant();
-
-    var methods = new List<string> { "GET", "HEAD", "OPTIONS" };
-
-    if (route.Contains("create") ||
-        route.Contains("register") ||
-        route.Contains("login"))
-    {
-      methods.Add("POST");
-    }
-
-    if (route.Contains("{id}") ||
-        route.Any(char.IsDigit))
-    {
-      methods.Add("PUT");
-      methods.Add("PATCH");
-      methods.Add("DELETE");
-    }
-
-    return methods.Distinct().ToList();
-  }
 }
-

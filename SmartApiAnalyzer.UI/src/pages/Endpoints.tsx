@@ -336,7 +336,7 @@ export default function ApiDiscovery() {
 
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col  gap-6">
       <NavigationGuard
         when={hasUnsavedImports()}
         title="Unsaved imported endpoints"

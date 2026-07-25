@@ -4,6 +4,7 @@ using SmartApiAnalyzer.Application.Interfaces.endpointAgentPipeline_Interface;
 using SmartApiAnalyzer.Domain.Entities.Models.Result.EndpointPipelineResultContext;
 using SmartApiAnalyzer.Infrastructure.Agents.EndpointDiscovery.Shared;
 using SmartApiAnalyzer.Domain.Enums;
+using SmartApiAnalyzer.Domain.Constants;
 
 public sealed partial class HtmlStrategy : IDiscoveryStrategy
 {
@@ -24,8 +25,8 @@ public sealed partial class HtmlStrategy : IDiscoveryStrategy
     _logger = logger;
   }
 
-  public DiscoveryStrategiesNames Name => DiscoveryStrategiesNames.Html__Strategy;
-  public int Priority => 5;
+  public string Name => DiscoveryStrategyType.Html__Strategy.ToSystemName();
+  public int Priority => (int)DiscoveryStrategyType.Html__Strategy;
 
   public async Task<IEnumerable<CandidateEndpoint>> DiscoverAsync(Uri baseUrl, CancellationToken cancellationToken)
   {
