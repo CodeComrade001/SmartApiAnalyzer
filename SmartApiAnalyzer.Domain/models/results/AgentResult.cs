@@ -30,6 +30,7 @@ public sealed class AgentCriticalResult : IAgentResult
     };
   }
 }
+
 public sealed class AgentResult<TPayload> : IAgentResult
 {
   public string AgentName { get; init; } = string.Empty;
@@ -127,31 +128,6 @@ public sealed class UrlValidationResult
   public string? FailureReason { get; init; }
 }
 
-// ── EndpointDiscoveryResult ─────────────────────────────────────────────────────────────
-
-public sealed class EndpointDiscoveryResult
-{
-  public List<string> DiscoveredRoutes { get; init; } = new();
-
-  /// <summary>
-  /// Per-route method map, e.g. "/products" -> ["GET", "POST"].
-  /// Replaces the old flat AllowedMethods list, which couldn't express
-  /// that different routes support different methods.
-  /// </summary>
-  public Dictionary<string, List<string>> RouteMethods { get; init; } = new();
-
-  /// <summary>
-  /// Tree view of DiscoveredRoutes with parent/child relationships
-  /// (e.g. "/products" is a parent of "/products/{id}").
-  /// Uses a local EndpointNode type to avoid referencing the service layer.
-  /// </summary>
-  public List<EndpointNode> Hierarchy { get; init; } = new();
-
-  public string DiscoveryMethod { get; init; } = string.Empty; // OpenApi|Options|Probe|Heuristic
-  public bool OpenApiAvailable { get; init; }
-  public string? OpenApiUrl { get; init; }
-}
-
 /// <summary>
 /// Minimal endpoint node representation used by EndpointDiscoveryResult.
 /// Placed here to avoid depending on EndpointDiscoveryService types from other projects.
@@ -180,37 +156,6 @@ public sealed class ThreatIntelResult
   public string Summary { get; init; } = string.Empty;
   public double Score { get; init; }
 }
-
-// public sealed class ThreatIntelResult
-// {
-//   public ThreatVerdict Verdict { get; init; } = ThreatVerdict.Safe;
-
-//   public double RiskScore { get; init; }
-
-//   public ThreatFlags Flags { get; init; } = new();
-
-//   public ThreatMetadata Metadata { get; init; } = new();
-
-//   public IReadOnlyCollection<string> Reasons { get; init; }
-//       = Array.Empty<string>();
-// }
-
-// public enum ThreatVerdict
-// {
-//   Safe,
-//   Suspicious,
-//   Malicious,
-//   Unknown
-// }
-
-// public sealed class ThreatFlags
-// {
-//   public bool IsMalicious { get; init; }
-//   public bool SuspiciousHost { get; init; }
-//   public bool DnsFailure { get; init; }
-//   public bool IsPrivateOrLoopback { get; init; }
-//   public bool IsUnencrypted { get; init; }
-// }
 
 // ── DomainHijack ─────────────────────────────────────────────────────────────
 

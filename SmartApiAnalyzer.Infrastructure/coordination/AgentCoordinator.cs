@@ -64,10 +64,6 @@ public sealed class AgentCoordinator : ICoordinator
       SessionId = sessionId,
     };
 
-    await _notifier.NotifyAsync(
-        "Session {sessionId}: user approved {request.RoutesAndEndpoints.Count} route(s). Resuming.",
-        evt, ct);
-
     return await RunDownstreamOnlyAsync(evt, ct);
   }
 
@@ -91,7 +87,17 @@ public sealed class AgentCoordinator : ICoordinator
 
       _tempStorage.StoreScanResult(evt.TenantId, agent.Name, result);
 
-      await _notifier.NotifyAsync(result.Message, evt, ct);
+      await _notifier.NotifyAsync(new AgentProgressMessage
+      {
+        ScanId = evt.TenantId,
+        AgentName = agent.Name,
+        Status = result.Success ? "Completed" : "Failed",
+        Message = result.Message,
+        Success = result.Success,
+        Payload = result.PayloadObject,
+        Timestamp = DateTime.UtcNow
+      },
+       evt, ct);
 
       if (result.StopProcessing)
       {

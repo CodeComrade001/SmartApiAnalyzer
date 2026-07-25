@@ -6,11 +6,11 @@ namespace SmartApiAnalyzer.Application.Services;
 public sealed class RealtimeNotifier : IRealtimeNotifier
 {
   public Task NotifyAsync(
-      string message,
+      AgentProgressMessage AgentMessage,
       UserApprovedScanEvent? evt = null,
       CancellationToken ct = default)
   {
-    Console.WriteLine($"[Realtime] :  {message} , UserApprovedScanEvent: {evt}, CancellationToken: {ct}");
+    Console.WriteLine($" [Realtime] AgentName :  {AgentMessage.AgentName} , [Realtime] message :  {AgentMessage.Message} , UserApprovedScanEvent: {evt}, CancellationToken: {ct}");
 
     return Task.CompletedTask;
   }

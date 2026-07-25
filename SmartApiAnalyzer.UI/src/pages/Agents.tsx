@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Play, CheckCircle2, Globe, Link2, X, Bot,
@@ -76,7 +76,7 @@ export default function AgentsPage() {
   const [expandedSites, setExpandedSites] = useState<Set<string>>(new Set());
   const [scanState, setScanState] = useState<"idle" | "scanning" | "done">("idle");
   const [progressLabel, setProgressLabel] = useState("");
-  const [selectedWebsite, setSelectedWebsite] = useState<WebsiteApiGroup[]>(mockWebsiteApis);
+  const [selectedWebsite, setSelectedWebsite] = useState<WebsiteApiGroup[]>([]);
   const notifyPopUp = usePopUpNotify();
   console.log("Turbo Log  ~ AgentsPage ~ selectedWebsite:", selectedWebsite);
 
@@ -230,6 +230,14 @@ export default function AgentsPage() {
       });
     }
   };
+
+  const updateScanTarget = () => {
+
+  }
+
+  useEffect(() => {
+
+  }, [])
 
   const canScan = scanTargets.length > 0 && selectedAgents.size > 0 && scanState !== "scanning";
 

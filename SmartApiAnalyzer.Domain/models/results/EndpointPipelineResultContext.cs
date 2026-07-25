@@ -37,7 +37,7 @@ public sealed class CandidateEndpoint
   /// The discovery strategy that found this endpoint.
   /// Example: Swagger, Html, Robots, Javascript...
   /// </summary>
-  public required DiscoveryStrategiesNames DiscoverySource { get; init; }
+  public required string DiscoverySource { get; init; }
 
   /// <summary>
   /// Confidence assigned by the discovery strategy.
@@ -61,7 +61,7 @@ public sealed class EndpointEvidence
   /// <summary>
   /// The strategy that produced this evidence.
   /// </summary>
-  public required DiscoveryStrategiesNames Source { get; init; }
+  public required string Source { get; init; }
 
   /// <summary>
   /// Human-readable explanation.
@@ -216,6 +216,11 @@ public static class DiscoveryConfidence
 
   public const double CommonRouteDistinctSignalHigh = 20.0;
   public const double CommonRouteDistinctSignalLow = 12.0;
+
+  public const double DocsRenderedSpecPath = 96.0;
+  public const double DocsRenderedSpecPathWithMethods = 97.0;
+
+  public const double DocsUnstructuredCodeBlockHint = 35.0;
 }
 
 public sealed class PipelineStageResult
@@ -231,24 +236,6 @@ public sealed class PipelineStageResult
 
   public static PipelineStageResult Fail(string stageName, string message, string? errorDetail, TimeSpan duration) =>
       new() { StageName = stageName, Success = false, Message = message, ErrorDetail = errorDetail, Duration = duration };
-}
-
-public enum PipelineStatus
-{
-  Completed,
-  PartiallyCompleted,
-  Failed,
-  Cancelled,
-}
-
-public enum EndpointClassification
-{
-  Unknown,
-  RestResource,
-  GraphQl,
-  HealthCheck,
-  Documentation,
-  Authentication,
 }
 
 /// <summary>

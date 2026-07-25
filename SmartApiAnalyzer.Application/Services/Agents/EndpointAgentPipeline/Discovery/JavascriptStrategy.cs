@@ -4,6 +4,7 @@ using SmartApiAnalyzer.Application.Interfaces.endpointAgentPipeline_Interface;
 using SmartApiAnalyzer.Domain.Entities.Models.Result.EndpointPipelineResultContext;
 using SmartApiAnalyzer.Infrastructure.Agents.EndpointDiscovery.Shared;
 using SmartApiAnalyzer.Domain.Enums;
+using SmartApiAnalyzer.Domain.Constants;
 
 public sealed partial class JavascriptStrategy : IDiscoveryStrategy
 {
@@ -45,8 +46,8 @@ public sealed partial class JavascriptStrategy : IDiscoveryStrategy
     _logger = logger;
   }
 
-  public DiscoveryStrategiesNames Name => DiscoveryStrategiesNames.Javascript__Strategy;
-  public int Priority => 3;
+  public string Name => DiscoveryStrategyType.Javascript__Strategy.ToSystemName();
+  public int Priority => (int)DiscoveryStrategyType.Javascript__Strategy;
 
   public async Task<IEnumerable<CandidateEndpoint>> DiscoverAsync(Uri baseUrl, CancellationToken cancellationToken)
   {
@@ -175,12 +176,12 @@ public sealed partial class JavascriptStrategy : IDiscoveryStrategy
     var candidate = new CandidateEndpoint
     {
       Path = normalized,
-      DiscoverySource = DiscoveryStrategiesNames.Javascript__Strategy,
+      DiscoverySource = DiscoveryStrategyType.Javascript__Strategy.ToSystemName(),
       Confidence = confidence,
     };
     candidate.Evidence.Add(new EndpointEvidence
     {
-      Source = DiscoveryStrategiesNames.Javascript__Strategy,
+      Source = DiscoveryStrategyType.Javascript__Strategy.ToSystemName(),
       Description = description,
       Value = $"{origin} :: {rawValue}",
       Confidence = confidence,

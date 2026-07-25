@@ -1,504 +1,235 @@
+using Microsoft.Extensions.Logging;
+using SmartApiAnalyzer.Application.Interfaces.endpointAgentPipeline_Interface;
 using SmartApiAnalyzer.Application.Services.Interface.Agents;
-using SmartApiAnalyzer.Domain.Entities.Models.Result.AgentServiceResults;
-using System.Collections.Concurrent;
-using System.Net;
-using System.Net.Http.Headers;
-using System.Text.Json;
+using SmartApiAnalyzer.Domain.Entities.Models.Result.EndpointPipelineResultContext;
+using SmartApiAnalyzer.Domain.Enums;
 
-namespace SmartApiAnalyzer.Infrastructure.Services;
+namespace SmartApiAnalyzer.Application.Services.Agents;
 
-/// <summary>
-/// Production-grade endpoint discovery service.
-///
-/// Pipeline:
-/// 1. Look for OpenAPI/Swagger
-/// 2. Parse every path
-/// 3. Normalize paths (preserve base path, keep {param} templates intact)
-/// 4. Detect supported HTTP methods (from spec when available, else probed)
-/// 5. Build endpoint hierarchy
-/// 6. Mark parents that contain children
-///
-/// Safe for production:
-/// - bounded concurrency
-/// - timeouts
-/// - cancellation aware
-/// - no blind brute force crawling
-/// - single-pass pipeline (no recursive re-discovery)
-/// </summary>
 public sealed class EndpointDiscoveryService : IEndpointDiscoveryService
 {
-  private static readonly HttpClient _http =
-      new HttpClient(new SocketsHttpHandler
-      {
-        PooledConnectionLifetime = TimeSpan.FromMinutes(5),
-        MaxConnectionsPerServer = 20,
-        AutomaticDecompression =
-              DecompressionMethods.GZip |
-              DecompressionMethods.Deflate
-      })
-      {
-        Timeout = TimeSpan.FromSeconds(5)
-      };
+    private readonly IEnumerable<IDiscoveryStrategy> _discoveryStrategies;
+    private readonly IEndpointVerifier _endpointVerifier;
+    private readonly IMethodDetector _methodDetector;
+    private readonly IEndpointIntelligence _endpointIntelligence;
+    private readonly IEndpointModelBuilder _endpointModelBuilder;
+    private readonly ILogger<EndpointDiscoveryService> _logger;
 
-  private const int MaxParallelism = 6;
-
-  private static readonly string[] CandidateSpecs =
-  [
-      "/swagger/v1/swagger.json",
-        "/swagger.json",
-        "/openapi.json",
-        "/openapi/v1.json",
-        "/api-docs",
-        "/v3/api-docs"
-  ];
-
-  private static readonly string[] CommonRoutes =
-  [
-      "/",
-        "/health",
-        "/status",
-        "/ready",
-        "/metrics",
-
-        "/api",
-        "/api/v1",
-        "/api/v2",
-
-        "/users",
-        "/auth",
-        "/login",
-        "/register",
-        "/profile",
-
-        "/products",
-        "/orders",
-        "/payments",
-
-        "/docs",
-        "/swagger"
-  ];
-
-  // Infra/meta routes that are useful to probe for existence but should not
-  // be reported as API data endpoints or mixed into the hierarchy.
-  private static readonly HashSet<string> InfraRoutes =
-      new(StringComparer.OrdinalIgnoreCase)
-      {
-            "/health", "/status", "/ready", "/metrics", "/docs", "/swagger"
-      };
-
-  // ----------------------------------------------------
-  // PUBLIC ENTRY POINT (single pipeline, no recursion)
-  // ----------------------------------------------------
-  public async Task<EndpointDiscoveryResult> DiscoverAsync(
-      Uri baseUri,
-      CancellationToken ct)
-  {
-    ct.ThrowIfCancellationRequested();
-
-    // 1 + 2. OpenAPI first (best source of truth) — gives us paths AND methods.
-    var (specRoutes, matchedSpecUrl) = await TryDiscoverFromOpenApi(baseUri, ct);
-
-    // 3. Normalize + collect route -> methods map.
-    var routeMethods =
-        new ConcurrentDictionary<string, IReadOnlyCollection<string>>(
-            StringComparer.OrdinalIgnoreCase);
-
-    foreach (var (path, methods) in specRoutes)
-      routeMethods[path] = methods;
-
-    if (specRoutes.Count == 0)
+    public EndpointDiscoveryService(
+        IEnumerable<IDiscoveryStrategy> discoveryStrategies,
+        IEndpointVerifier endpointVerifier,
+        IMethodDetector methodDetector,
+        IEndpointIntelligence endpointIntelligence,
+        IEndpointModelBuilder endpointModelBuilder,
+        ILogger<EndpointDiscoveryService> logger)
     {
-      // No spec available — fall back to smart probing of known concrete route
-      var found = new ConcurrentDictionary<string, byte>(
-          StringComparer.OrdinalIgnoreCase);
-
-      // await ProbeRoutes(baseUri, CommonRoutes, found, ct);
-
-      if (found.IsEmpty)
-        found.TryAdd("/", 0);
-
-      // 4. Detect methods only for concrete (non-templated) routes we confirmed exist.
-      await Parallel.ForEachAsync(
-          found.Keys,
-          new ParallelOptions
-          {
-            MaxDegreeOfParallelism = MaxParallelism,
-            CancellationToken = ct
-          },
-          async (route, token) =>
-          {
-            var methods = await DetectMethods(baseUri, route, token);
-            routeMethods[route] = methods;
-          });
+        _discoveryStrategies = discoveryStrategies;
+        _endpointVerifier = endpointVerifier;
+        _methodDetector = methodDetector;
+        _endpointIntelligence = endpointIntelligence;
+        _endpointModelBuilder = endpointModelBuilder;
+        _logger = logger;
     }
 
-    // 5 + 6. Build hierarchy and mark parents with children.
-    var hierarchy = BuildHierarchy(routeMethods.Keys);
-
-    return new EndpointDiscoveryResult
+    public async Task<EndpointDiscoveryResult> DiscoverAsync(Uri website, CancellationToken cancellationToken)
     {
-      DiscoveredRoutes = routeMethods.Keys
-            .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
-            .ToList(),
+        var stageResults = new List<PipelineStageResult>();
+        var pipelineStopwatch = System.Diagnostics.Stopwatch.StartNew();
+        var context = new EndpointPipelineContext { Website = website };
 
-      RouteMethods = routeMethods.ToDictionary(
-            x => x.Key,
-            x => x.Value.ToList(),
-            StringComparer.OrdinalIgnoreCase),
-
-      Hierarchy = hierarchy,
-
-      DiscoveryMethod = specRoutes.Count > 0 ? "OpenApi" : "Probe",
-      OpenApiAvailable = specRoutes.Count > 0,
-      OpenApiUrl = matchedSpecUrl?.ToString()
-    };
-  }
-
-  /// <summary>
-  /// Route -> methods map, without re-running discovery (fixes the old
-  /// infinite recursion between this method and DiscoverAsync).
-  /// </summary>
-  public async Task<IReadOnlyDictionary<string, IReadOnlyCollection<string>>>
-      DiscoverRoutesWithMethodsAsync(Uri baseUri, CancellationToken ct)
-  {
-    var (specRoutes, _) = await TryDiscoverFromOpenApi(baseUri, ct);
-
-    if (specRoutes.Count > 0)
-      return specRoutes;
-
-    var found = new ConcurrentDictionary<string, byte>(
-        StringComparer.OrdinalIgnoreCase);
-
-    await ProbeRoutes(baseUri, CommonRoutes, found, ct);
-
-    var result = new ConcurrentDictionary<string, IReadOnlyCollection<string>>(
-        StringComparer.OrdinalIgnoreCase);
-
-    await Parallel.ForEachAsync(
-        found.Keys,
-        new ParallelOptions
+        try
         {
-          MaxDegreeOfParallelism = MaxParallelism,
-          CancellationToken = ct
-        },
-        async (route, token) =>
-        {
-          result[route] = await DetectMethods(baseUri, route, token);
-        });
+            cancellationToken.ThrowIfCancellationRequested();
 
-    return result
-        .OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase)
-        .ToDictionary(x => x.Key, x => x.Value, StringComparer.OrdinalIgnoreCase);
-  }
+            //-----------------------------------------
+            // Stage 1 — Endpoint Discovery (never fatal; per-strategy isolation)
+            //-----------------------------------------
+            stageResults.Add(await RunDiscoveryStageAsync(context, cancellationToken));
 
-  // ----------------------------------------------------
-  // OPENAPI DISCOVERY (paths + methods, straight from spec)
-  // ----------------------------------------------------
-  private static async Task<(Dictionary<string, IReadOnlyCollection<string>> Routes, Uri? SpecUrl)>
-      TryDiscoverFromOpenApi(Uri baseUri, CancellationToken ct)
-  {
-    var routes = new Dictionary<string, IReadOnlyCollection<string>>(
-        StringComparer.OrdinalIgnoreCase);
-
-    foreach (var specPath in CandidateSpecs)
-    {
-      ct.ThrowIfCancellationRequested();
-
-      try
-      {
-        var uri = CombineUri(baseUri, specPath);
-
-        using var request = BuildRequest(HttpMethod.Get, uri);
-        using var response = await _http.SendAsync(request, ct);
-
-        if (response == null || !response.IsSuccessStatusCode)
-          continue;
-
-        var json = await response.Content.ReadAsStringAsync(ct);
-
-        ExtractPathsAndMethodsFromSpec(json, routes);
-
-        if (routes.Count > 0)
-          return (routes, uri);
-      }
-      catch
-      {
-        // swallow intentionally — try next candidate spec location
-      }
-    }
-
-    return (routes, null);
-  }
-
-  private static readonly string[] HttpVerbs =
-      ["get", "post", "put", "patch", "delete", "head", "options"];
-
-  private static void ExtractPathsAndMethodsFromSpec(
-      string json,
-      Dictionary<string, IReadOnlyCollection<string>> routes)
-  {
-    try
-    {
-      using var doc = JsonDocument.Parse(json);
-
-      if (!doc.RootElement.TryGetProperty("paths", out var paths))
-        return;
-
-      foreach (var item in paths.EnumerateObject())
-      {
-        var route = Normalize(item.Name);
-
-        var methods = new List<string>();
-
-        if (item.Value.ValueKind == JsonValueKind.Object)
-        {
-          foreach (var verb in HttpVerbs)
-          {
-            if (item.Value.TryGetProperty(verb, out _))
-              methods.Add(verb.ToUpperInvariant());
-          }
-        }
-
-        if (methods.Count == 0)
-          methods.Add("GET");
-
-        routes[route] = methods;
-      }
-    }
-    catch
-    {
-      // invalid json/spec ignored
-    }
-  }
-
-  // ----------------------------------------------------
-  // PROBING (only for concrete routes, never templated ones)
-  // ----------------------------------------------------
-  private static async Task ProbeRoutes(
-      Uri baseUri,
-      IEnumerable<string> candidates,
-      ConcurrentDictionary<string, byte> found,
-      CancellationToken ct)
-  {
-    await Parallel.ForEachAsync(
-        candidates,
-        new ParallelOptions
-        {
-          MaxDegreeOfParallelism = MaxParallelism,
-          CancellationToken = ct
-        },
-        async (route, token) =>
-        {
-          var uri = CombineUri(baseUri, route);
-
-          try
-          {
-            using var request = BuildRequest(HttpMethod.Head, uri);
-            using var response = await _http.SendAsync(request, token);
-
-            if (IsAcceptable(response.StatusCode))
+            if (context.Candidates.Count == 0)
             {
-              found.TryAdd(Normalize(route), 0);
-              return;
+                _logger.LogWarning("No candidate endpoints discovered for {Website}.", website);
+                return await BuildFinalResultAsync(context, PipelineStatus.Completed, stageResults,
+                    "No endpoints were discovered by any strategy.", cancellationToken);
             }
 
-            // Some APIs block HEAD
-            using var get = BuildRequest(HttpMethod.Get, uri);
-            using var getResp = await _http.SendAsync(get, token);
+            var seeStrategyResult = context;
 
-            if (IsAcceptable(getResp.StatusCode))
-              found.TryAdd(Normalize(route), 0);
-          }
-          catch
-          {
-            // safe ignore
-          }
-        });
-  }
+            //-----------------------------------------
+            // Stage 2 — Endpoint Verification (FATAL if it fails)
+            //-----------------------------------------
+            var verifyResult = await SafeRunStageAsync("EndpointVerification",
+                () => _endpointVerifier.VerifyAsync(context, cancellationToken), cancellationToken);
+            stageResults.Add(verifyResult);
 
-  // ----------------------------------------------------
-  // METHOD DETECTION (only ever called on concrete, existing routes)
-  // ----------------------------------------------------
-  private static async Task<IReadOnlyCollection<string>> DetectMethods(
-      Uri baseUri,
-      string route,
-      CancellationToken ct)
-  {
-    var methods = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-    var uri = CombineUri(baseUri, route);
+            if (!verifyResult.Success)
+            {
+                _logger.LogError("Endpoint verification failed for {Website}: {Message}", website, verifyResult.Message);
+                return await BuildFinalResultAsync(context, PipelineStatus.Failed, stageResults, verifyResult.Message, cancellationToken);
+            }
 
-    // OPTIONS = strongest runtime signal
-    try
-    {
-      using var options = BuildRequest(HttpMethod.Options, uri);
-      using var response = await _http.SendAsync(options, ct);
+            var degraded = false;
+            var endpointVerificationResult = context;
 
-      if (response.Content.Headers.Allow.Any())
-      {
-        foreach (var m in response.Content.Headers.Allow)
-          methods.Add(m);
-      }
-    }
-    catch
-    {
-    }
+            //-----------------------------------------
+            // Stage 3 — HTTP Method Detection (degrade, don't abort)
+            //-----------------------------------------
+            var methodResult = await SafeRunStageAsync("MethodDetection",
+                () => _methodDetector.DetectAsync(context, cancellationToken), cancellationToken);
+            stageResults.Add(methodResult);
+            degraded |= !methodResult.Success;
 
-    if (methods.Count > 0)
-      return methods.OrderBy(x => x).ToList();
+            var methodVerificationResult = context;
+            //-----------------------------------------
+            // Stage 4 — Endpoint Intelligence (degrade, don't abort)
+            //-----------------------------------------
+            var intelligenceResult = await SafeRunStageAsync("EndpointIntelligence",
+                () => _endpointIntelligence.EnrichAsync(context, cancellationToken), cancellationToken);
+            stageResults.Add(intelligenceResult);
+            degraded |= !intelligenceResult.Success;
 
-    // Fallback probing only if OPTIONS gave nothing
-    var candidates = new[]
-    {
-            HttpMethod.Get,
-            HttpMethod.Post,
-            HttpMethod.Put,
-            HttpMethod.Patch,
-            HttpMethod.Delete,
-            HttpMethod.Head
-        };
+            var endpointIntelligenceResult = context;
+            //-----------------------------------------
+            // Stage 5 — Final Model
+            //-----------------------------------------
+            var finalStatus = degraded ? PipelineStatus.PartiallyCompleted : PipelineStatus.Completed;
+            var buildFinalResult = await BuildFinalResultAsync(context, finalStatus, stageResults, null, cancellationToken);
 
-    foreach (var method in candidates)
-    {
-      ct.ThrowIfCancellationRequested();
-
-      try
-      {
-        using var request = BuildRequest(method, uri);
-        using var response = await _http.SendAsync(request, ct);
-
-        if (response == null || response.StatusCode is HttpStatusCode.MethodNotAllowed
-            or HttpStatusCode.NotFound)
-          continue;
-
-        methods.Add(method.Method);
-      }
-      catch
-      {
-      }
-    }
-
-    if (methods.Count == 0)
-      methods.Add("GET");
-
-    return methods.OrderBy(x => x).ToList();
-  }
-
-  /// <summary>
-  /// Builds a tree from flat route paths, e.g. "/products" and
-  /// "/products/{id}" become a parent node ("/products", HasChildren = true)
-  /// with one child node ("/products/{id}").
-  /// </summary>
-  public static List<EndpointNode> BuildHierarchy(IEnumerable<string> routes)
-  {
-    var root = new EndpointNode { Segment = "", FullPath = "" };
-
-    foreach (var route in routes)
-    {
-      var segments = route
-          .Split('/', StringSplitOptions.RemoveEmptyEntries);
-
-      var current = root;
-      var pathSoFar = "";
-
-      foreach (var segment in segments)
-      {
-        pathSoFar += "/" + segment;
-
-        var existing = current.Children
-            .FirstOrDefault(c => c.Segment.Equals(segment, StringComparison.OrdinalIgnoreCase));
-
-        if (existing is null)
+            var stage5Result = stageResults;
+            return buildFinalResult;
+        }
+        catch (OperationCanceledException)
         {
-          existing = new EndpointNode
-          {
-            Segment = segment,
-            FullPath = pathSoFar,
-            IsParameter = segment.StartsWith('{') && segment.EndsWith('}')
-          };
-          current.Children.Add(existing);
+            _logger.LogInformation("Endpoint discovery pipeline was cancelled for {Website}.", website);
+            return await BuildFinalResultAsync(context, PipelineStatus.Cancelled, stageResults, "The operation was cancelled.", CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            // Every stage above defends itself. Reaching here means something outside the
+            // expected failure surface broke — treat as critical, not routine.
+            _logger.LogCritical(ex, "Endpoint discovery pipeline failed unexpectedly for {Website}.", website);
+
+            try
+            {
+                return await BuildFinalResultAsync(context, PipelineStatus.Failed, stageResults,
+                    $"Unexpected pipeline failure: {ex.Message}", CancellationToken.None);
+            }
+            catch (Exception buildEx)
+            {
+                _logger.LogCritical(buildEx, "Failed to build failure result for {Website}.", website);
+                return new EndpointDiscoveryResult
+                {
+                    Website = website,
+                    Status = PipelineStatus.Failed,
+                    Endpoints = [],
+                    Statistics = context.Statistics,
+                    StageResults = stageResults,
+                    FailureReason = $"Unexpected pipeline failure: {ex.Message}",
+                };
+            }
+        }
+        finally
+        {
+            context.Statistics.Duration = pipelineStopwatch.Elapsed;
+        }
+    }
+
+    private async Task<PipelineStageResult> RunDiscoveryStageAsync(EndpointPipelineContext context, CancellationToken cancellationToken)
+    {
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        var strategiesExecuted = 0;
+        var strategiesFailed = 0;
+        var strategies = _discoveryStrategies?.ToList() ?? [];
+
+        if (strategies.Count == 0)
+            return PipelineStageResult.Fail("EndpointDiscovery", "No discovery strategies are registered.", null, stopwatch.Elapsed);
+
+        foreach (var strategy in strategies.OrderBy(s => s.Priority))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var strategyStopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+            try
+            {
+                var discovered = await strategy.DiscoverAsync(context.Website, cancellationToken);
+
+                // Defend against a strategy returning null instead of an empty sequence.
+                var materialized = discovered?.Where(c => c is not null).ToList() ?? [];
+
+                context.Candidates.AddRange(materialized);
+                context.Statistics.StrategyResults[strategy.Name.ToString()] = materialized.Count;
+                strategiesExecuted++;
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                strategiesFailed++;
+                context.Statistics.StrategyResults[strategy.Name.ToString()] = 0;
+                _logger.LogWarning(ex, "Discovery strategy '{Strategy}' failed and was skipped.", strategy.Name);
+            }
+            finally
+            {
+                context.Statistics.StrategyDurations[strategy.Name.ToString()] = strategyStopwatch.Elapsed;
+            }
         }
 
-        current = existing;
-      }
+        context.Statistics.StrategiesExecuted = strategiesExecuted;
+        context.Statistics.CandidateEndpointsFound = context.Candidates.Count;
+
+        var message = strategiesFailed == 0
+            ? $"All {strategiesExecuted} discovery strategy(ies) executed successfully, {context.Candidates.Count} candidate(s) found."
+            : $"{strategiesExecuted} of {strategies.Count} strategy(ies) executed successfully ({strategiesFailed} failed), {context.Candidates.Count} candidate(s) found.";
+
+        // Discovery is never fatal, even at zero successes — an empty result is a valid,
+        // reportable outcome. The caller decides how to proceed based on candidate count.
+        return PipelineStageResult.Ok("EndpointDiscovery", message, stopwatch.Elapsed);
     }
 
-    return root.Children;
-  }
-
-  // ----------------------------------------------------
-  // HELPERS
-  // ----------------------------------------------------
-
-  /// <summary>
-  /// Combines a base URI with a relative route WITHOUT discarding any
-  /// existing path on the base URI (unlike `new Uri(baseUri, route)`,
-  /// which treats a leading "/" as absolute and resets to host root).
-  /// </summary>
-  private static Uri CombineUri(Uri baseUri, string route)
-  {
-    var basePath = baseUri.AbsolutePath.TrimEnd('/');
-    var relative = route.TrimStart('/');
-
-    var builder = new UriBuilder(baseUri)
+    private async Task<PipelineStageResult> SafeRunStageAsync(
+        string stageName, Func<Task<PipelineStageResult>> stage, CancellationToken cancellationToken)
     {
-      Path = string.IsNullOrEmpty(relative)
-            ? (string.IsNullOrEmpty(basePath) ? "/" : basePath)
-            : $"{basePath}/{relative}"
-    };
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        try
+        {
+            var result = await stage();
+            // Defend against a stage implementation returning null despite the interface contract.
+            return result ?? PipelineStageResult.Fail(stageName, $"Stage '{stageName}' returned no result.", null, stopwatch.Elapsed);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Pipeline stage '{Stage}' threw an unhandled exception.", stageName);
+            return PipelineStageResult.Fail(stageName, $"Stage '{stageName}' failed with an unhandled exception.", ex.Message, stopwatch.Elapsed);
+        }
+    }
 
-    return builder.Uri;
-  }
-
-  private static HttpRequestMessage BuildRequest(HttpMethod method, Uri uri)
-  {
-    var req = new HttpRequestMessage(method, uri);
-
-    req.Headers.UserAgent.Add(
-        new ProductInfoHeaderValue("SmartApiAnalyzer", "1.0"));
-
-    req.Headers.Accept.Add(
-        new MediaTypeWithQualityHeaderValue("*/*"));
-
-    return req;
-  }
-
-  private static bool IsAcceptable(HttpStatusCode code)
-  {
-    return code switch
+    private async Task<EndpointDiscoveryResult> BuildFinalResultAsync(
+        EndpointPipelineContext context, PipelineStatus status,
+        List<PipelineStageResult> stageResults, string? failureReason, CancellationToken cancellationToken)
     {
-      HttpStatusCode.OK => true,
-      HttpStatusCode.Created => true,
-      HttpStatusCode.Accepted => true,
-      HttpStatusCode.NoContent => true,
-      HttpStatusCode.Unauthorized => true,
-      HttpStatusCode.Forbidden => true,
-      HttpStatusCode.MethodNotAllowed => true,
-      HttpStatusCode.Redirect => true,
-      HttpStatusCode.Moved => true,
-      _ => false
-    };
-  }
+        try
+        {
+            return await _endpointModelBuilder.BuildAsync(context, status, stageResults, failureReason, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogCritical(ex, "Model builder threw while assembling the final result for {Website}.", context.Website);
+            return new EndpointDiscoveryResult
+            {
+                Website = context.Website,
+                Status = PipelineStatus.Failed,
+                Endpoints = [],
+                Statistics = context.Statistics,
+                StageResults = stageResults,
+                FailureReason = failureReason ?? $"Model building failed: {ex.Message}",
+            };
+        }
+    }
 
-  /// <summary>
-  /// Normalizes a path WITHOUT mangling {param} templates and without
-  /// forcing case changes that would break case-sensitive template
-  /// segments (kept lowercase here only for literal segments would need
-  /// spec-aware handling if your API is case-sensitive; adjust if needed).
-  /// </summary>
-  private static string Normalize(string route)
-  {
-    if (string.IsNullOrWhiteSpace(route))
-      return "/";
-
-    route = route.Trim();
-
-    if (!route.StartsWith('/'))
-      route = "/" + route;
-
-    // Collapse duplicate slashes, keep template braces intact.
-    while (route.Contains("//"))
-      route = route.Replace("//", "/");
-
-    return route.Length > 1 ? route.TrimEnd('/') : route;
-  }
 }

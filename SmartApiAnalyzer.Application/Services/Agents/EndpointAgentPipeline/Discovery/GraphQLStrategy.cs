@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 using SmartApiAnalyzer.Application.Interfaces.endpointAgentPipeline_Interface;
 using SmartApiAnalyzer.Domain.Entities.Models.Result.EndpointPipelineResultContext;
 using SmartApiAnalyzer.Infrastructure.Agents.EndpointDiscovery.Shared;
-using SmartApiAnalyzer.Domain.Enums;
+using SmartApiAnalyzer.Domain.Constants;
 
 public sealed class GraphQLStrategy : IDiscoveryStrategy
 {
@@ -30,8 +30,9 @@ public sealed class GraphQLStrategy : IDiscoveryStrategy
     _logger = logger;
   }
 
-  public DiscoveryStrategiesNames Name => DiscoveryStrategiesNames.GraphQL___Strategy;
-  public int Priority => 6;
+
+  public string Name => DiscoveryStrategyType.GraphQL___Strategy.ToSystemName();
+  public int Priority => (int)DiscoveryStrategyType.GraphQL___Strategy;
 
   public async Task<IEnumerable<CandidateEndpoint>> DiscoverAsync(Uri baseUrl, CancellationToken cancellationToken)
   {

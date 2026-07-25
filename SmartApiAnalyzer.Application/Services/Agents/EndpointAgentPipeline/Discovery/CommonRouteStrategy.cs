@@ -3,8 +3,8 @@ using System.Net;
 using System.Security.Cryptography;
 using Microsoft.Extensions.Logging;
 using SmartApiAnalyzer.Application.Interfaces.endpointAgentPipeline_Interface;
+using SmartApiAnalyzer.Domain.Constants;
 using SmartApiAnalyzer.Domain.Entities.Models.Result.EndpointPipelineResultContext;
-using SmartApiAnalyzer.Domain.Enums;
 using SmartApiAnalyzer.Infrastructure.Agents.EndpointDiscovery.Shared;
 
 public sealed class CommonRouteStrategy : IDiscoveryStrategy
@@ -45,8 +45,8 @@ public sealed class CommonRouteStrategy : IDiscoveryStrategy
     _perRequestTimeout = perRequestTimeout ?? DefaultPerRequestTimeout;
   }
 
-  public DiscoveryStrategiesNames Name => DiscoveryStrategiesNames.CommonRoute___Strategy;
-  public int Priority => 100;
+  public string Name => DiscoveryStrategyType.CommonRoute___Strategy.ToSystemName();
+  public int Priority => (int)DiscoveryStrategyType.CommonRoute___Strategy;
 
   public async Task<IEnumerable<CandidateEndpoint>> DiscoverAsync(Uri baseUrl, CancellationToken cancellationToken)
   {

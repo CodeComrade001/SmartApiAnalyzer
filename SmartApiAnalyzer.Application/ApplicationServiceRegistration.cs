@@ -4,7 +4,8 @@ using SmartApiAnalyzer.Application.Services.Agents;
 using SmartApiAnalyzer.Application.Services.Interface.Agents;
 using SmartApiAnalyzer.Application.Services.Interface.ControllerServices;
 using SmartApiAnalyzer.Application.Services.Interface.Events;
-using SmartApiAnalyzer.Infrastructure.Services;
+using SmartApiAnalyzer.Application.Interfaces.endpointAgentPipeline_Interface;
+using SmartApiAnalyzer.Infrastructure.Agents.EndpointAgentPipeline;
 
 namespace SmartApiAnalyzer.Application.DependencyInjection;
 
@@ -41,6 +42,25 @@ public static class ApplicationServiceRegistration
         services.AddScoped<ISslTlsCheckService, SslTlsCheckService>();
         services.AddScoped<IUrlValidationService, UrlValidationService>();
 
+        // ======================================================
+        // EndpointHelpers HELPER DI
+        // ======================================================
+        services.AddScoped<IEndpointVerifier, EndpointVerifier>();
+        services.AddScoped<IMethodDetector, MethodDetector>();
+        services.AddScoped<IEndpointIntelligence, EndpointIntelligence>();
+        services.AddScoped<IEndpointModelBuilder, EndpointModelBuilder>();
+
+        // ======================================================
+        // EndpointHelpers DiscoveryStrategies HELPER DI
+        // ======================================================
+        services.AddScoped<IDiscoveryStrategy, CommonRouteStrategy>();
+        services.AddScoped<IDiscoveryStrategy, SwaggerStrategy>();
+        services.AddScoped<IDiscoveryStrategy, SitemapStrategy>();
+        services.AddScoped<IDiscoveryStrategy, RobotsStrategy>();
+        services.AddScoped<IDiscoveryStrategy, JavascriptStrategy>();
+        services.AddScoped<IDiscoveryStrategy, HtmlStrategy>();
+        services.AddScoped<IDiscoveryStrategy, GraphQLStrategy>();
+        services.AddScoped<IDiscoveryStrategy, DocsStrategy>();
 
         return services;
     }

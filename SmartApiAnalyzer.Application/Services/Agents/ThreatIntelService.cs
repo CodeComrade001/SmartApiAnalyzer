@@ -4,7 +4,7 @@ using SmartApiAnalyzer.Domain.Entities.Models.Result.AgentServiceResults;
 using System.Net;
 using System.Net.Sockets;
 
-namespace SmartApiAnalyzer.Infrastructure.Services;
+namespace SmartApiAnalyzer.Application.Services.Agents;
 
 public class ThreatIntelService : IThreatIntelService
 {

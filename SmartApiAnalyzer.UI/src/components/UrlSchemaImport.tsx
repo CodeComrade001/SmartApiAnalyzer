@@ -317,12 +317,11 @@ export default function UrlSchemaImport({ onImport }: Props) {
         onDrop={onDrop}
         onClick={() => inputRef.current?.click()}
         className={`group relative cursor-pointer overflow-hidden rounded-2xl border-2 border-dashed p-6 text-center transition-all ${dragging
-            ? "border-[hsl(var(--brand-cyan))] bg-[hsl(var(--brand-cyan))]/5"
-            : "border-border/60 hover:border-[hsl(var(--brand-cyan))]/60 hover:bg-muted/30"
+          ? "border-[hsl(var(--brand-cyan))] bg-[hsl(var(--brand-cyan))]/5"
+          : "border-border/60 hover:border-[hsl(var(--brand-cyan))]/60 hover:bg-muted/30"
           }`}
       >
         <input
-          title="Import URL schema file"
           ref={inputRef}
           type="file"
           className="hidden"
@@ -330,7 +329,8 @@ export default function UrlSchemaImport({ onImport }: Props) {
           onChange={onInputChange}
         />
         <div className="pointer-events-none absolute inset-0 bg-grid opacity-20" />
-        <AnimatePresence>
+
+        {/* <AnimatePresence>
           {dragging && (
             <motion.div
               initial={{ opacity: 0 }}
@@ -339,17 +339,17 @@ export default function UrlSchemaImport({ onImport }: Props) {
               className="absolute inset-0 rounded-xl bg-[hsl(var(--brand-cyan))]/10"
             />
           )}
-        </AnimatePresence>
+        </AnimatePresence> */}
 
         <motion.div
           animate={{ y: dragging ? -3 : 0 }}
           transition={{ type: "spring", stiffness: 300 }}
-          className="relative flex flex-col items-center gap-2.5"
+          className="flex flex-col items-center gap-2.5"
         >
           <div
             className={`flex h-12 w-12 items-center justify-center rounded-xl border bg-gradient-to-br transition-all ${dragging
-                ? "border-[hsl(var(--brand-cyan))]/50 from-[hsl(var(--brand-cyan))]/30 to-[hsl(var(--brand-violet))]/10"
-                : "border-border/50 from-muted/40 to-muted/10 group-hover:from-[hsl(var(--brand-cyan))]/20"
+              ? "border-[hsl(var(--brand-cyan))]/50 from-[hsl(var(--brand-cyan))]/30 to-[hsl(var(--brand-violet))]/10"
+              : "border-border/50 from-muted/40 to-muted/10 group-hover:from-[hsl(var(--brand-cyan))]/20"
               }`}
           >
             <UploadCloud
@@ -362,7 +362,7 @@ export default function UrlSchemaImport({ onImport }: Props) {
               {dragging ? "Drop schema file to import" : "Drag and drop a URL schema file"}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              or click to browse — accepts <span className="font-semibold text-[hsl(var(--brand-cyan))]">.yaml</span>,{" "}
+              or click to browse accepts <span className="font-semibold text-[hsl(var(--brand-cyan))]">.yaml</span>,{" "}
               <span className="font-semibold text-[hsl(var(--brand-cyan))]">.yml</span>, or{" "}
               <span className="font-semibold text-[hsl(var(--brand-cyan))]">.json</span>
             </p>
@@ -395,8 +395,8 @@ export default function UrlSchemaImport({ onImport }: Props) {
                   <button
                     onClick={() => setSampleFormat("yaml")}
                     className={`rounded-md px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide transition ${sampleFormat === "yaml"
-                        ? "bg-[hsl(var(--brand-cyan))]/15 text-[hsl(var(--brand-cyan))]"
-                        : "text-muted-foreground hover:text-foreground"
+                      ? "bg-[hsl(var(--brand-cyan))]/15 text-[hsl(var(--brand-cyan))]"
+                      : "text-muted-foreground hover:text-foreground"
                       }`}
                   >
                     YAML
@@ -404,8 +404,8 @@ export default function UrlSchemaImport({ onImport }: Props) {
                   <button
                     onClick={() => setSampleFormat("json")}
                     className={`rounded-md px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide transition ${sampleFormat === "json"
-                        ? "bg-[hsl(var(--brand-cyan))]/15 text-[hsl(var(--brand-cyan))]"
-                        : "text-muted-foreground hover:text-foreground"
+                      ? "bg-[hsl(var(--brand-cyan))]/15 text-[hsl(var(--brand-cyan))]"
+                      : "text-muted-foreground hover:text-foreground"
                       }`}
                   >
                     JSON

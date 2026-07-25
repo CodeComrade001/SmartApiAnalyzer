@@ -1,4 +1,5 @@
 
+using SmartApiAnalyzer.Domain.Constants;
 using SmartApiAnalyzer.Domain.Entities.Models.Result.EndpointPipelineResultContext;
 using SmartApiAnalyzer.Domain.Enums;
 
@@ -7,7 +8,7 @@ namespace SmartApiAnalyzer.Application.Interfaces.endpointAgentPipeline_Interfac
 
 public interface IDiscoveryStrategy
 {
-  DiscoveryStrategiesNames Name { get; }
+  string Name { get; }
 
   int Priority { get; }
 

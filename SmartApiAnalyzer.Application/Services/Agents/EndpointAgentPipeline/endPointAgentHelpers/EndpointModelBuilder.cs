@@ -1,7 +1,7 @@
-using System.Net.Http;
 using Microsoft.Extensions.Logging;
 using SmartApiAnalyzer.Application.Interfaces.endpointAgentPipeline_Interface;
 using SmartApiAnalyzer.Domain.Entities.Models.Result.EndpointPipelineResultContext;
+using SmartApiAnalyzer.Domain.Enums;
 
 namespace SmartApiAnalyzer.Infrastructure.Agents.EndpointAgentPipeline;
 

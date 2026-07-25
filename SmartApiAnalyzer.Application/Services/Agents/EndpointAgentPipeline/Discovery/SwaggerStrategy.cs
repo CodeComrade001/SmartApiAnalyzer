@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using SmartApiAnalyzer.Application.Interfaces.endpointAgentPipeline_Interface;
+using SmartApiAnalyzer.Domain.Constants;
 using SmartApiAnalyzer.Domain.Entities.Models.Result.EndpointPipelineResultContext;
 using SmartApiAnalyzer.Domain.Enums;
 using SmartApiAnalyzer.Infrastructure.Agents.EndpointDiscovery.Shared;
@@ -30,8 +31,8 @@ public sealed class SwaggerStrategy : IDiscoveryStrategy
     _logger = logger;
   }
 
-  public DiscoveryStrategiesNames Name => DiscoveryStrategiesNames.Swagger__Strategy;
-  public int Priority => 100;
+  public string Name => DiscoveryStrategyType.Swagger__Strategy.ToSystemName();
+  public int Priority => (int)DiscoveryStrategyType.Swagger__Strategy;
 
   public async Task<IEnumerable<CandidateEndpoint>> DiscoverAsync(Uri baseUrl, CancellationToken cancellationToken)
   {
