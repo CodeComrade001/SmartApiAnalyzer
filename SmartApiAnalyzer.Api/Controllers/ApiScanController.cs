@@ -10,6 +10,7 @@ namespace Api.Controllers;
 public class ApiScanController : ControllerBase
 {
     private readonly IApiScanService _ApiScanService;
+    private static readonly Guid GlobalGuid = Guid.Parse("12345678-1234-1234-1234-123456789ABC");
 
     public ApiScanController(IApiScanService logService)
     {
@@ -63,11 +64,8 @@ public class ApiScanController : ControllerBase
     [HttpPatch("update-endpoint")]
     public async Task<IActionResult> UpdateUrlEndpoints(ApiScanSchema.UpdateUrlEndpointsRequest request, CancellationToken ct)
     {
-        if (request.ScanId == Guid.Empty)
-            return BadRequest("Invalid Id");
 
-
-        var result = await _ApiScanService.UpdateUrlEndpointsAsync(request.ScanId, request, ct);
+        var result = await _ApiScanService.UpdateUrlEndpointsAsync(GlobalGuid, request, ct);
 
         if (!result.Success)
             return NotFound(result);
@@ -78,8 +76,8 @@ public class ApiScanController : ControllerBase
     [HttpPost("start-scan")]
     public async Task<IActionResult> UrlExecutionButton(ApiScanSchema.StartApiScanExecutionRequest request, CancellationToken ct)
     {
-        if (request.ScanId == Guid.Empty)
-            return BadRequest("Invalid Id");
+        // if (request.ScanId == Guid.Empty)
+        //     return BadRequest("Invalid Id");
 
         var result = await _ApiScanService.StartApiScanExecutionAsync(request, ct);
 

@@ -7,6 +7,7 @@ export interface WebsiteApiGroup {
 
   isSaved?: boolean;
   hasChanges?: boolean;
+
 }
 
 
@@ -33,6 +34,8 @@ export interface ApiEndpoint {
   | "verified"
   | "ignored" |
   "healthy" | "degraded" | "down";
+
+  endpointPayload?: string;
 }
 
 // export interface Endpoint {

@@ -51,8 +51,11 @@ public static class ApiScanSchema
   public sealed class UpdateUrlEndpointsRequest
   {
     public Guid ScanId { get; set; }
+    public string DomainUrl { get; set; } = default!;
     public List<RouteInputDto> RoutesAndEndpoints { get; set; } = new();
   }
+
+
 
   public sealed class StartApiScanExecutionRequest
   {

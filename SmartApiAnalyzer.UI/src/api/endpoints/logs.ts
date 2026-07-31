@@ -1,13 +1,23 @@
 import { api } from "../client";
 import { ApiResponse, IngestLogResponse } from "../response/ApiResponse";
 
+
+
+export const GLOBAL_UUID_FOR_TEST = "12345678-1234-1234-1234-123456789ABC";
+
 export interface IngestLogPayload {
   DomainUrl: string;
 }
 
 export interface UpdateEndpointPayload {
   ScanId: string;
+  DomainUrl: string;
   RoutesAndEndpoints: RoutesAndEndpointsPayload[];
+}
+
+export interface MethodPayload {
+  Route: string,
+  Payload: string,
 }
 
 export interface RoutesAndEndpointsPayload {
@@ -16,7 +26,7 @@ export interface RoutesAndEndpointsPayload {
 }
 
 export interface ScanInitiationSwitchPayload {
-  // ScanId?: string;
+  ScanId?: string;
   DomainUrl: string;
   ScanRequest: boolean;
   RoutesAndEndpoints: RoutesAndEndpointsPayload[];
