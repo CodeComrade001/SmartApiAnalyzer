@@ -20,6 +20,7 @@ public class ApiScanService : IApiScanService
   private readonly IEventBus _eventBus;
   public readonly ITemporaryInMemoryStorage<ApiScanSchema.ApiScanResultResponse> _temporaryStorage;
   private readonly IRealtimeNotifier _notifier;
+  private static readonly Guid GlobalGuid = Guid.Parse("12345678-1234-1234-1234-123456789ABC");
 
   public ApiScanService(
        // IApiScanRepository scanRepository,
@@ -90,14 +91,13 @@ public class ApiScanService : IApiScanService
       // Create Scan Session Id
       // =========================================================
 
-      var scanId = Guid.NewGuid();
 
       // =========================================================
       // Create Event
       // =========================================================
 
       var gateKeeperEvent = new GateKeeperIngestedEvent(
-          scanId,
+          GlobalGuid,
           request.DomainUrl,
           0,
           0,
@@ -162,7 +162,7 @@ public class ApiScanService : IApiScanService
 
       var scanSession = new ApiScanSession
       {
-        Id = scanId,
+        Id = GlobalGuid,
         DomainUrl = request.DomainUrl,
         Status = ScanStatus.PendingApproval,
         Telemetry = telemetry,
@@ -186,7 +186,7 @@ public class ApiScanService : IApiScanService
               .ToList()
       };
 
-      var storageResult = _temporaryStorage.StoreScanResult(scanId, "IngestAsync Function", response);
+      var storageResult = _temporaryStorage.StoreScanResult(GlobalGuid, "IngestAsync Function", response);
 
       if (!storageResult)
       {
@@ -198,7 +198,7 @@ public class ApiScanService : IApiScanService
       // API Response
       // =========================================================
 
-      Console.WriteLine($"Scan {scanId} completed in {stopwatch.Elapsed.TotalSeconds} seconds with {endpoints.Count()} endpoints found.");
+      Console.WriteLine($"Scan {GlobalGuid} completed in {stopwatch.Elapsed.TotalSeconds} seconds with {endpoints.Count()} endpoints found.");
       return ServiceResult<ApiScanSchema.ApiScanResultResponse>
           .Ok(response);
     }
@@ -218,9 +218,6 @@ public class ApiScanService : IApiScanService
 
   public async Task<ServiceResult<ApiScanSchema.AgentScanResponse>> StartApiScanExecutionAsync(ApiScanSchema.StartApiScanExecutionRequest request, CancellationToken ct)
   {
-
-    var isUserGuidVerified = verifyUserGuid(request.ScanId);
-    if (!isUserGuidVerified) return ServiceResult<ApiScanSchema.AgentScanResponse>.Fail("Invalid Scan Id");
     var isScanRequestTrue = request.ScanRequest;
     if (!isScanRequestTrue) return ServiceResult<ApiScanSchema.AgentScanResponse>.Confirmed("Agent Execution not initiated by user");
 
@@ -261,8 +258,6 @@ public class ApiScanService : IApiScanService
 
   public async Task<ServiceResult<ApiScanSchema.defaultApiResponse>> UpdateUrlEndpointsAsync(Guid id, ApiScanSchema.UpdateUrlEndpointsRequest request, CancellationToken ct)
   {
-    var isUserGuidVerified = verifyUserGuid(request.ScanId);
-    if (!isUserGuidVerified) return ServiceResult<ApiScanSchema.defaultApiResponse>.Fail("Invalid Scan Id");
     var isScanRequestTrue = verifyUpdateUrlPayload(request);
     if (!isScanRequestTrue) return ServiceResult<ApiScanSchema.defaultApiResponse>.Fail("Invalid endpoints payload");
 

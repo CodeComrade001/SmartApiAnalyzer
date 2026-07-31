@@ -8,11 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Search, Globe, CheckCircle2, CircleAlert, Plus, Save, ArrowRight, Link2, Trash2, AlertTriangle, ChevronDown, } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ApiEndpoint, HTTP_METHODS, HttpMethod, WebsiteApiGroup } from "@/types";
-import { ingestDomainUrl, RoutesAndEndpointsPayload, updateDomainEndpoint, UpdateEndpointPayload } from "@/api/endpoints/logs";
+import { GLOBAL_UUID_FOR_TEST, ingestDomainUrl, MethodPayload, RoutesAndEndpointsPayload, updateDomainEndpoint, UpdateEndpointPayload } from "@/api/endpoints/logs";
 import { usePopUpNotify } from "@/hooks/use-pop-up-notify";
 import UrlSchemaImport from "@/components/UrlSchemaImport";
 import NavigationGuard from "@/components/NavigationGuard";
-import { getallMethodEndpointGrouped } from "@/components/helpers/getallMethodEndpointGrouped";
+import { updateDomainEndpointPayloadNormalize } from '@/components/helpers/getallMethodEndpointGrouped';
+import { SecureStorage } from "@/api/storage/temporary_storage";
 
 /* ─── constants ─── */
 // const HTTP_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
@@ -315,7 +316,7 @@ export default function ApiDiscovery() {
           : {
             ...w,
             endpoints: w.endpoints.map((e) =>
-              e.id !== endpointId ? e : ({ ...e, payload: value } as ApiEndpoint)
+              e.id !== endpointId ? e : ({ ...e, payload: value, endpointPayload: value } as ApiEndpoint)
             ),
             isSaved: false,
             hasChanges: true,
@@ -408,7 +409,6 @@ export default function ApiDiscovery() {
     notifyPopUp(path + " has been removed", "warning", "Endpoint removed");
   };
 
-  /* save (wired to console — replace with real call later) */
   const handleSave = async (website: WebsiteApiGroup) => {
     notifyPopUp("Saving APIs for " + website.websiteUrl + "…", "info", "Save started");
 
@@ -419,20 +419,22 @@ export default function ApiDiscovery() {
 
     try {
 
-      const groupedResult: RoutesAndEndpointsPayload[] = getallMethodEndpointGrouped(website.endpoints);
-      if (!groupedResult || groupedResult.length === 0) return notifyPopUp("The selected scan targets do not contain any valid endpoints to scan.", "error", "No valid endpoints found");
 
-      const websitePayload: UpdateEndpointPayload = {
-        ScanId: website.id,
-        RoutesAndEndpoints: groupedResult
-      };
+      const websiteEndpointUpdatePayload: UpdateEndpointPayload = updateDomainEndpointPayloadNormalize(website)
 
-      const apiResponse = await updateDomainEndpoint(websitePayload);
+      if (websiteEndpointUpdatePayload.DomainUrl == "" || websiteEndpointUpdatePayload.RoutesAndEndpoints.length === 0) {
+      }
+      console.log("Turbo Log  ~ handleSave ~ websiteEndpointUpdatePayload:", websiteEndpointUpdatePayload);
+
+
+      const apiResponse = await updateDomainEndpoint(websiteEndpointUpdatePayload);
 
       if (!apiResponse || apiResponse.status !== 200) {
         notifyPopUp("Failed to save APIs for " + website.websiteUrl, "error", "Save failed");
         return;
       }
+
+      SecureStorage.save("updateDomainEndpoint", apiResponse);
 
       setWebsiteGroups((prev) =>
         prev.map((w) =>
@@ -737,24 +739,6 @@ export default function ApiDiscovery() {
                                 />
                               </TableCell>
 
-                              {/* confidence */}
-                              {/* <TableCell className="text-center">
-                              {endpoint.confidence > 0 ? (
-                                <Badge
-                                  variant="secondary"
-                                  className={`tabular-nums text-[10px] ${endpoint.confidence >= 85
-                                    ? "text-emerald-400"
-                                    : endpoint.confidence >= 65
-                                      ? "text-amber-400"
-                                      : "text-muted-foreground"
-                                    }`}
-                                >
-                                  {endpoint.confidence}%
-                                </Badge>
-                              ) : (
-                                <span className="text-xs text-muted-foreground/40">—</span>
-                              )}
-                            </TableCell> */}
 
                               {/* status */}
                               <TableCell className="text-center">
@@ -785,10 +769,6 @@ export default function ApiDiscovery() {
                               </TableCell>
                             </TableRow>
 
-                            {/* NEW: sample payload — collapsed by default to cut noise. Only for methods
-                              that carry a request body. Click to open; it auto-collapses a couple
-                              seconds after you leave it. Your text is saved as you type, regardless
-                              of whether the box is open or closed. */}
                             {METHODS_WITH_PAYLOAD.includes(endpoint.method as HttpMethod) && (
                               <TableRow className="hover:bg-transparent">
                                 <TableCell colSpan={6} className="pt-0 pb-2">

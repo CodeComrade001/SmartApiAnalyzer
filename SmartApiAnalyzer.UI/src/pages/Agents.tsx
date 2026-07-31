@@ -20,8 +20,8 @@ import {
 import type { AgentKey, AgentCategory, FindingSeverity } from "@/data/agentCatalog";
 import { RoutesAndEndpointsPayload, scanInitiationSwitch, ScanInitiationSwitchPayload } from "@/api/endpoints/logs";
 import { ApiEndpoint, WebsiteApiGroup } from "@/types";
+import { scanInitiationSwitchPayloadNormalize } from '@/components/helpers/getallMethodEndpointGrouped';
 import { usePopUpNotify } from "@/hooks/use-pop-up-notify";
-import { getallMethodEndpointGrouped } from '../components/helpers/getallMethodEndpointGrouped';
 
 /* ─── constants ─── */
 const HTTP_METHOD_COLORS: Record<string, string> = {
@@ -182,19 +182,14 @@ export default function AgentsPage() {
           }. Waiting for the scan engine to accept the request.`,
       });
 
-      const groupedResult = getallMethodEndpointGrouped(scanTargets.flatMap((site) => site.endpoints));
-      if (!groupedResult || groupedResult.length === 0) return notifyPopUp("The selected scan targets do not contain any valid endpoints to scan.", "error", "No valid endpoints found");
 
-      const normalizePayload: ScanInitiationSwitchPayload[] = scanTargets.map(
-        (site) => ({
-          DomainUrl: site.websiteUrl,
-          ScanRequest: false,
-          RoutesAndEndpoints: groupedResult,
-          Agents: [...selectedAgents],
-        })
+      const normalizePayload: ScanInitiationSwitchPayload[] = scanInitiationSwitchPayloadNormalize(
+        scanTargets,
+        Array.from(selectedAgents),
       );
 
       const response = await scanInitiationSwitch(normalizePayload);
+
 
       if (!response.success) return notify({ type: "error", title: "Scan initiation failed", message: response.message || "An unexpected error occurred while initiating the scan." });
 

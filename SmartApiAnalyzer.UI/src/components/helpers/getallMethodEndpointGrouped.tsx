@@ -1,23 +1,80 @@
-import { RoutesAndEndpointsPayload } from "@/api/endpoints/logs";
-import { ApiEndpoint } from "@/types";
+import {
+  GLOBAL_UUID_FOR_TEST,
+  ScanInitiationSwitchPayload,
+  UpdateEndpointPayload,
+} from "@/api/endpoints/logs";
+import { WebsiteApiGroup } from "@/types";
 
-export const getallMethodEndpointGrouped = (endpoints: ApiEndpoint[]): RoutesAndEndpointsPayload[] => {
-  const grouped: Record<string, string[]> = {};
+// You said you'll handle this import
+import { RoutesAndEndpointsPayload } from '../../api/endpoints/logs';
+// import { GLOBAL_UUID_FOR_TEST } from "@/constants";
 
-  endpoints.forEach((endpoint) => {
-    const method = endpoint.method;
-    if (!method) return []; // skip if no valid method
+export const updateDomainEndpointPayloadNormalize = (
+  website: WebsiteApiGroup
+): UpdateEndpointPayload => {
 
-    if (!grouped[method]) {
-      grouped[method] = [];
+  const endpoint_groupedRoutes: Record<string, Set<string>> = {};
+
+  website.endpoints.forEach((endpoint) => {
+    const route =
+      endpoint.inferredPath || endpoint.correctedPath;
+
+    if (!route) return {
+      ScanId: "",
+      domainUrl: "",
+      RoutesAndEndpointsPayload: []
+    };
+
+    if (!endpoint_groupedRoutes[route]) {
+      endpoint_groupedRoutes[route] = new Set();
     }
-    grouped[method].push(endpoint.correctedPath || endpoint.inferredPath);
+
+    endpoint_groupedRoutes[route].add(endpoint.method);
   });
 
-  const result = Object.entries(grouped).map(([route, methods]) => ({
-    Route: route,
-    Endpoints: methods,
-  }));
-  console.log("Turbo Log  ~ getallMethodEndpointGrouped ~ result:", result);
-  return result;
+  return {
+    ScanId: GLOBAL_UUID_FOR_TEST,
+    DomainUrl: website.websiteUrl,
+    RoutesAndEndpoints: Object.entries(endpoint_groupedRoutes).map(
+      ([route, methods]) => ({
+        Route: route,
+        Endpoints: [...methods],
+      })
+    ),
+  };
+};
+
+
+
+export const scanInitiationSwitchPayloadNormalize = (
+  websites: WebsiteApiGroup[], agentSelected: string[]
+): ScanInitiationSwitchPayload[] => {
+  return websites.map((website) => {
+    const scanInitiation_groupedRoutes: Record<string, Set<string>> = {};
+
+    website.endpoints.forEach((endpoint) => {
+      const route = endpoint.inferredPath || endpoint.correctedPath;
+
+      if (!route) return;
+
+      if (!scanInitiation_groupedRoutes[route]) {
+        scanInitiation_groupedRoutes[route] = new Set();
+      }
+
+      scanInitiation_groupedRoutes[route].add(endpoint.method);
+    });
+
+    return {
+      ScanId: GLOBAL_UUID_FOR_TEST,
+      DomainUrl: website.websiteUrl,
+      ScanRequest: true,
+      RoutesAndEndpoints: Object.entries(scanInitiation_groupedRoutes).map(
+        ([route, methods]) => ({
+          Route: route,
+          Endpoints: [...methods],
+        })
+      ),
+      Agents: agentSelected,
+    } as ScanInitiationSwitchPayload;
+  });
 };
