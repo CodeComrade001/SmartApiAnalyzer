@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Application.DTOs.ApiScan;
 using Application.DTOs.Common;
 using Infrastructure.Common;
+using Microsoft.Extensions.Logging;
 using SmartApiAnalyzer.Application.Interfaces.Temp_interfaces;
 using SmartApiAnalyzer.Application.Services.Interface.Agents;
 using SmartApiAnalyzer.Application.Services.Interface.ControllerServices;
@@ -21,18 +22,21 @@ public class ApiScanService : IApiScanService
   public readonly ITemporaryInMemoryStorage<ApiScanSchema.ApiScanResultResponse> _temporaryStorage;
   private readonly IRealtimeNotifier _notifier;
   private static readonly Guid GlobalGuid = Guid.Parse("12345678-1234-1234-1234-123456789ABC");
+  private readonly ILogger<ApiScanService> _logger;
 
   public ApiScanService(
        // IApiScanRepository scanRepository,
        IRealtimeNotifier notifier,
   IGateKeeperAgent gatekeeperAgent,
       ITemporaryInMemoryStorage<ApiScanSchema.ApiScanResultResponse> temporaryStorage,
-      IEventBus eventBus)
+      IEventBus eventBus,
+      ILogger<ApiScanService> logger)
   {
     // _scanRepository = scanRepository;
     _temporaryStorage = temporaryStorage;
     _gatekeeperAgent = gatekeeperAgent;
     _eventBus = eventBus;
+    _logger = logger;
     _notifier = notifier;
   }
 
@@ -216,28 +220,36 @@ public class ApiScanService : IApiScanService
     }
   }
 
-  public async Task<ServiceResult<ApiScanSchema.AgentScanResponse>> StartApiScanExecutionAsync(ApiScanSchema.StartApiScanExecutionRequest request, CancellationToken ct)
+  public async Task<ServiceResult<ApiScanSchema.AgentScanResponse>> StartApiScanExecutionAsync(List<ApiScanSchema.StartApiScanExecutionRequest> request, CancellationToken ct)
   {
-    var isScanRequestTrue = request.ScanRequest;
-    if (!isScanRequestTrue) return ServiceResult<ApiScanSchema.AgentScanResponse>.Confirmed("Agent Execution not initiated by user");
+
+    // var isScanRequestTrue = request.ScanRequest;
+    // if (!isScanRequestTrue) return ServiceResult<ApiScanSchema.AgentScanResponse>.Confirmed("Agent Execution not initiated by user");
+
+    // Create a max of Three domain url and pass them ass different events
+
+    var temporaryRunForOnlyOne = request[0];
 
     try
     {
 
       var userApprovedEvent = new UserApprovedScanEvent(
-              request.ScanId,
-              request.DomainUrl,
-              request.RoutesAndEndpoints,
+              temporaryRunForOnlyOne.ScanId,
+              temporaryRunForOnlyOne.DomainUrl,
+              temporaryRunForOnlyOne.RoutesAndEndpoints,
               0,
               0,
               DateTime.UtcNow,
-              request.Agents);
+              temporaryRunForOnlyOne.Agents);
 
       await _eventBus.PublishAsync(userApprovedEvent, ct);
 
-      var isDatabaseUpdated = _temporaryStorage.StoreScanResult(request.ScanId, "StartApiScanExecutionAsync function", new ApiScanSchema.ApiScanResultResponse()); // mock the database update result
+      _logger.LogInformation("event publish successful");
+
+      var isDatabaseUpdated = _temporaryStorage.StoreScanResult(temporaryRunForOnlyOne.ScanId, "StartApiScanExecutionAsync function", new ApiScanSchema.ApiScanResultResponse()); // mock the database update result
       if (!isDatabaseUpdated) return ServiceResult<ApiScanSchema.AgentScanResponse>.Fail("Scan execution failed");
 
+      _logger.LogInformation("Scan execution started successfully");
 
       return ServiceResult<ApiScanSchema.AgentScanResponse>.Confirmed("Scan execution started successfully");
     }
@@ -265,9 +277,21 @@ public class ApiScanService : IApiScanService
     {
 
       var isDatabaseUpdated = _temporaryStorage.StoreScanResult(request.ScanId, "UpdateUrlEndpointsAsync Function", new ApiScanSchema.ApiScanResultResponse()); // mock the database update result
-      if (!isDatabaseUpdated) return ServiceResult<ApiScanSchema.defaultApiResponse>.Fail("Failed to update URL endpoints");
+      Console.WriteLine($"database storage result {isDatabaseUpdated}");
+      if (!isDatabaseUpdated)
+      {
 
-      return ServiceResult<ApiScanSchema.defaultApiResponse>.Ok(new ApiScanSchema.defaultApiResponse());
+        _logger.LogError("database information failed");
+        return ServiceResult<ApiScanSchema.defaultApiResponse>.Fail("Failed to update URL endpoints");
+      }
+      ;
+
+      _logger.LogInformation("database Storage successful");
+      return ServiceResult<ApiScanSchema.defaultApiResponse>.Ok(new ApiScanSchema.defaultApiResponse
+      {
+        Message = "database Storage successful",
+        Success = true
+      });
     }
     catch (OperationCanceledException)
     {

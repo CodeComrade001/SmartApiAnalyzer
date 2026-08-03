@@ -3,15 +3,30 @@ using SmartApiAnalyzer.Domain.Events;
 
 namespace SmartApiAnalyzer.Application.Services;
 
+using Microsoft.AspNetCore.SignalR;
+
 public sealed class RealtimeNotifier : IRealtimeNotifier
 {
-  public Task NotifyAsync(
-      AgentProgressMessage AgentMessage,
+  private readonly IHubContext<ScanHub> _hub;
+
+  public RealtimeNotifier(
+      IHubContext<ScanHub> hub)
+  {
+    _hub = hub;
+  }
+
+  public async Task NotifyAsync(
+      AgentProgressMessage message,
       UserApprovedScanEvent? evt = null,
       CancellationToken ct = default)
   {
-    Console.WriteLine($" [Realtime] AgentName :  {AgentMessage.AgentName} , [Realtime] message :  {AgentMessage.Message} , UserApprovedScanEvent: {evt}, CancellationToken: {ct}");
-
-    return Task.CompletedTask;
+    await _hub
+        .Clients
+        .Group(message.ScanId.ToString())
+        .SendAsync(
+            "AgentProgress",
+            message,
+            ct);
   }
 }
+
