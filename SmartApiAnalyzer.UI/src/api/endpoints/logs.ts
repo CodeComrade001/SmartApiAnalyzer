@@ -63,7 +63,6 @@ export const updateDomainEndpoint = async (
     "/api/v1/update-endpoint",
     data
   );
-  console.log("Turbo Log  ~ updateDomainEndpoint ~ response:", response);
 
   return response.data;
 }

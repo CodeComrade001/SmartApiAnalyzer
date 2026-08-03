@@ -62,6 +62,8 @@ public static class ApplicationServiceRegistration
         services.AddScoped<IDiscoveryStrategy, GraphQLStrategy>();
         services.AddScoped<IDiscoveryStrategy, DocsStrategy>();
 
+        services.AddSignalR();
+
         return services;
     }
 }

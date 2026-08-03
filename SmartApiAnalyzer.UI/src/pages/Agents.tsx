@@ -2,26 +2,26 @@ import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Play, CheckCircle2, Globe, Link2, X, Bot,
-  ScanLine, ChevronDown, Plus, ChevronRight,
+  ScanLine, ChevronDown,
   ShieldCheck, ArrowRight,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useLocation } from "wouter";
-import { mockWebsiteApis, mockScanPayload } from "@/services/data/mockData";
+import { mockWebsiteApis } from "@/services/data/mockData";
 import { useScan } from "@/context/ScanContext";
-import type { LastScanMeta } from "@/context/ScanContext";
 import {
-  AGENTS, PRESETS, categoryMeta, presetColorMap, severityConfig, MOCK_RESULTS,
+  AGENTS, PRESETS, categoryMeta, presetColorMap,
 } from "@/data/agentCatalog";
-import type { AgentKey, AgentCategory, FindingSeverity } from "@/data/agentCatalog";
-import { RoutesAndEndpointsPayload, scanInitiationSwitch, ScanInitiationSwitchPayload } from "@/api/endpoints/logs";
+import type { AgentCategory } from "@/data/agentCatalog";
+import { scanInitiationSwitch, ScanInitiationSwitchPayload } from "@/api/endpoints/logs";
 import { ApiEndpoint, WebsiteApiGroup } from "@/types";
 import { scanInitiationSwitchPayloadNormalize } from '@/components/helpers/getallMethodEndpointGrouped';
 import { usePopUpNotify } from "@/hooks/use-pop-up-notify";
+import { HashGenerator } from "@/api/helpers/uniqueIdGenerator";
+import { connection } from "@/api/helpers/signalr";
 
 /* ─── constants ─── */
 const HTTP_METHOD_COLORS: Record<string, string> = {
@@ -77,6 +77,7 @@ export default function AgentsPage() {
   const [scanState, setScanState] = useState<"idle" | "scanning" | "done">("idle");
   const [progressLabel, setProgressLabel] = useState("");
   const [selectedWebsite, setSelectedWebsite] = useState<WebsiteApiGroup[]>([]);
+  console.log("Turbo Log  ~ AgentsPage ~ selectedWebsite:", selectedWebsite);
   const notifyPopUp = usePopUpNotify();
   console.log("Turbo Log  ~ AgentsPage ~ selectedWebsite:", selectedWebsite);
 
@@ -153,6 +154,7 @@ export default function AgentsPage() {
     }
 
     try {
+      await connection.start();
       setScanState("scanning");
       setScanProgressValue(0);
 
@@ -190,23 +192,16 @@ export default function AgentsPage() {
 
       const response = await scanInitiationSwitch(normalizePayload);
 
+      await connection.invoke(
+        "JoinScan",
+        response.scanId
+      );
 
-      if (!response.success) return notify({ type: "error", title: "Scan initiation failed", message: response.message || "An unexpected error occurred while initiating the scan." });
-
-      // Save scan id if returned
-      // if (response.scanId) {
-      //   setCurrentScanId(response.scanId);
-      // }
-
-      notify({
+      return notify({
         type: "success",
-        title: "Scan accepted",
-        message:
-          "The scan request has been accepted. Waiting for live progress updates.",
+        title: "Scan initiated",
+        message: `Scan initiated successfully with ID: ${response.scanId}. Monitor the progress in the terminal overlay.`,
       });
-
-      // Start your SignalR/WebSocket/SSE/Polling here
-      // await startMonitoringScan(response.scanId);
 
     } catch (error: any) {
       console.error(error);
@@ -226,15 +221,42 @@ export default function AgentsPage() {
     }
   };
 
-  const updateScanTarget = () => {
+  const canScan = scanTargets.length > 0 && selectedAgents.size > 0 && scanState !== "scanning";
 
-  }
+  useEffect(() => {
+    setSelectedWebsite(prev => {
+      const newWebsites = scanTargets.filter(
+        target => !prev.some(w => w.id === target.id)
+      );
+
+      return [...prev, ...newWebsites];
+    });
+  }, [scanTargets]);
 
   useEffect(() => {
 
-  }, [])
+    connection.on("AgentProgress", (message) => {
 
-  const canScan = scanTargets.length > 0 && selectedAgents.size > 0 && scanState !== "scanning";
+      console.log(message);
+
+      addScanLog(message);
+
+      setAgentScanStatuses(prev => ({
+        ...prev,
+        [message.agentName]:
+          message.status === "Completed"
+            ? "completed"
+            : "failed"
+      }));
+
+    });
+
+    return () => {
+      connection.off("AgentProgress");
+    };
+
+  }, []);
+
 
   return (
     <motion.div initial="hidden" animate="show" variants={stagger} className="flex flex-col gap-8">
@@ -284,7 +306,7 @@ export default function AgentsPage() {
         <Card className="glass-card overflow-hidden rounded-2xl">
           <div className="space-y-4 p-5">
             {/* saved websites */}
-            {mockWebsiteApis.length > 0 && (
+            {selectedWebsite.length > 0 && (
               <div>
                 <p className="mb-2.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Saved websites</p>
                 <div className="space-y-2">
@@ -358,14 +380,14 @@ export default function AgentsPage() {
               </Button>
             </div> */}
 
-            {selectedWebsite.length > 0 && (
+            {scanTargets.length > 0 && (
               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
                 className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-3">
                 <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-cyan-400">
-                  Active Scan Targets ({selectedWebsite.length})
+                  Active Scan Targets ({scanTargets.length})
                 </p>
                 <div className="space-y-1">
-                  {selectedWebsite.map((url) => (
+                  {scanTargets.map((url) => (
                     <div key={`${url.websiteUrl} + ${url.id}`} className="flex items-center gap-2">
                       <div className="h-1.5 w-1.5 shrink-0 rounded-full bg-cyan-400" />
                       <span className="flex-1 truncate font-mono text-[11px] text-muted-foreground">{url.websiteUrl}</span>

@@ -14,6 +14,7 @@ import UrlSchemaImport from "@/components/UrlSchemaImport";
 import NavigationGuard from "@/components/NavigationGuard";
 import { updateDomainEndpointPayloadNormalize } from '@/components/helpers/getallMethodEndpointGrouped';
 import { SecureStorage } from "@/api/storage/temporary_storage";
+import { useScan } from "@/context/ScanContext";
 
 /* ─── constants ─── */
 // const HTTP_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
@@ -92,10 +93,12 @@ function MethodSelect({
 /* ─── page ─── */
 export default function ApiDiscovery() {
   const notifyPopUp = usePopUpNotify();
+  const { addScanTarget } = useScan()
   const [search, setSearch] = useState("");
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [isDiscovering, setIsDiscovering] = useState(false);
   const [websiteGroups, setWebsiteGroups] = useState<WebsiteApiGroup[]>([]);
+  const [isApiSaving, setIsApiSaving] = useState(false);
 
   /* NEW: which endpoints currently have their sample-payload box open. UI-only state —
      doesn't touch websiteGroups, so collapsing/expanding never marks anything unsaved. */
@@ -145,6 +148,7 @@ export default function ApiDiscovery() {
 
   /* search filter */
   const filteredWebsites = useMemo(() => {
+    if (isApiSaving) { }
     if (!search.trim()) return websiteGroups;
     const lower = search.toLowerCase();
     return websiteGroups.filter(
@@ -152,7 +156,7 @@ export default function ApiDiscovery() {
         w.websiteUrl.toLowerCase().includes(lower) ||
         w.endpoints.some((e) => e.inferredPath.toLowerCase().includes(lower))
     );
-  }, [search, websiteGroups]);
+  }, [search, websiteGroups, isApiSaving]);
 
   /* NEW: names of websites that have never been saved, or were saved and then changed again.
      Used to power the NavigationGuard message and the per-row "unsaved" badge. */
@@ -171,7 +175,6 @@ export default function ApiDiscovery() {
     try {
 
       const apiResponse = await ingestDomainUrl({ DomainUrl: websiteUrl });
-      console.log("Turbo Log  ~ handleDiscoverApis ~ apiResponse:", apiResponse);
 
 
       if (!apiResponse.success || !apiResponse.data) return notifyPopUp("Failed to discover APIs for " + websiteUrl, "error", "Discovery failed");
@@ -210,7 +213,6 @@ export default function ApiDiscovery() {
     } finally {
       setIsDiscovering(false);
     }
-
   };
 
   const handleSchemaImport = (groups: WebsiteApiGroup[]) => {
@@ -410,6 +412,7 @@ export default function ApiDiscovery() {
   };
 
   const handleSave = async (website: WebsiteApiGroup) => {
+    setIsApiSaving(true);
     notifyPopUp("Saving APIs for " + website.websiteUrl + "…", "info", "Save started");
 
     if (!website.websiteUrl || website.websiteUrl === "") return notifyPopUp("Website URL is empty — cannot save", "error", "Save failed");
@@ -418,23 +421,44 @@ export default function ApiDiscovery() {
     }
 
     try {
-
-
       const websiteEndpointUpdatePayload: UpdateEndpointPayload = updateDomainEndpointPayloadNormalize(website)
 
       if (websiteEndpointUpdatePayload.DomainUrl == "" || websiteEndpointUpdatePayload.RoutesAndEndpoints.length === 0) {
       }
-      console.log("Turbo Log  ~ handleSave ~ websiteEndpointUpdatePayload:", websiteEndpointUpdatePayload);
-
 
       const apiResponse = await updateDomainEndpoint(websiteEndpointUpdatePayload);
+      console.log("Turbo Log  ~ handleSave ~ apiResponse:", apiResponse);
 
-      if (!apiResponse || apiResponse.status !== 200) {
-        notifyPopUp("Failed to save APIs for " + website.websiteUrl, "error", "Save failed");
+      const { success: updateEndpointSuccess, message: updateEndpointMessage } = apiResponse;
+
+      if (!updateEndpointSuccess) {
+        const defaultApiMessage = updateEndpointMessage !== "" ? updateEndpointMessage : `Failed to save APIs for " + ${website.websiteUrl}, ${"error"}, "Save failed`
+        notifyPopUp(defaultApiMessage);
         return;
       }
 
+      // update 
+      filteredWebsites.map(filterWebsiteItem => {
+        if (filterWebsiteItem.id !== website.id) {
+          return filterWebsiteItem;
+        }
+
+        return {
+          ...filterWebsiteItem,
+          endpoints: filterWebsiteItem.endpoints.map(endpointItem => ({
+            ...endpointItem,
+            status: website.endpoints.some(e => e.id === endpointItem.id)
+              ? "verified"
+              : "unverified",
+          })),
+        };
+      });
+
+
+      addScanTarget(website)
+
       SecureStorage.save("updateDomainEndpoint", apiResponse);
+
 
       setWebsiteGroups((prev) =>
         prev.map((w) =>
@@ -442,11 +466,15 @@ export default function ApiDiscovery() {
         )
       );
 
+
+
       return notifyPopUp("APIs for " + website.websiteUrl + " saved successfully", "success", "Save complete");
 
     } catch (error) {
       console.error("Error saving website APIs", error);
       notifyPopUp("Failed to save APIs for " + website.websiteUrl, "error", "Save failed");
+    } finally {
+      setIsApiSaving(false);
     }
   };
 
@@ -549,9 +577,6 @@ export default function ApiDiscovery() {
           </Card>
         ) : (
           filteredWebsites.map((website, index) => {
-            // NEW: derive a single boolean used purely for display — does not affect any API call
-            const isUnsaved = !website.isSaved || website.hasChanges;
-            // NEW: distinct HTTP methods present in this website's endpoints, used to render per-method bulk select buttons
             const methodsPresent = Array.from(new Set(website.endpoints.map((e) => e.method))) as HttpMethod[];
             const allEndpointsSelected = website.endpoints.length > 0 && website.endpoints.every((e) => e.selected);
             return (
@@ -568,7 +593,7 @@ export default function ApiDiscovery() {
                         <Link2 className="h-4 w-4" />
                         {website.websiteUrl}
                         {/* NEW: per-site unsaved indicator */}
-                        {isUnsaved ? (
+                        {!isApiSaving ? (
                           <Badge
                             variant="outline"
                             className="text-[10px] bg-[hsl(var(--brand-amber))]/15 text-[hsl(var(--brand-amber))] border-[hsl(var(--brand-amber))]/30"
@@ -601,9 +626,9 @@ export default function ApiDiscovery() {
                         <Plus className="mr-2 h-4 w-4" />
                         Add Endpoint
                       </Button>
-                      <Button size="sm" variant={isUnsaved ? "default" : "outline"} onClick={() => handleSave(website)}>
+                      <Button size="sm" variant={!isApiSaving ? "default" : "outline"} onClick={() => handleSave(website)}>
                         <Save className="mr-2 h-4 w-4" />
-                        {isUnsaved ? "Save APIs" : "Saved"}
+                        {!isApiSaving ? "Save APIs" : "Saved"}
                       </Button>
                     </div>
                   </CardHeader>

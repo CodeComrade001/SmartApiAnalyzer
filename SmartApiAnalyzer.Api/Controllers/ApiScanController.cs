@@ -74,7 +74,7 @@ public class ApiScanController : ControllerBase
     }
 
     [HttpPost("start-scan")]
-    public async Task<IActionResult> UrlExecutionButton(ApiScanSchema.StartApiScanExecutionRequest request, CancellationToken ct)
+    public async Task<IActionResult> UrlExecutionButton(List<ApiScanSchema.StartApiScanExecutionRequest> request, CancellationToken ct)
     {
         // if (request.ScanId == Guid.Empty)
         //     return BadRequest("Invalid Id");
