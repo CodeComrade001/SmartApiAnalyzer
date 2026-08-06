@@ -21,12 +21,15 @@ public sealed class RealtimeNotifier : IRealtimeNotifier
       CancellationToken ct = default)
   {
     await _hub
-        .Clients
-        .Group(message.ScanId.ToString())
-        .SendAsync(
-            "AgentProgress",
-            message,
-            ct);
+           .Clients
+           .Group(message.ScanId.ToString())
+           .SendAsync(
+               "AgentProgress",
+               message,
+               ct);
+
+    Console.WriteLine($"Turbo Log  ~ RealtimeNotifier ~ NotifyAsync ~ message:||| agentName: {message.AgentName} ||||| scanId : {message.ScanId} ||||| agentMessage:  {message.Message}");
+
   }
 }
 
