@@ -118,6 +118,8 @@ app.UseCors("Development");
 // HTTP PIPELINE
 // ======================================================
 
+app.MapHub<ScanHub>("/agents/endpoint/scan-result");
+
 app.MapControllers();
 
 app.Run();

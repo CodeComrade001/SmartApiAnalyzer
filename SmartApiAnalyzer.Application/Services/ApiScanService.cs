@@ -19,7 +19,7 @@ public class ApiScanService : IApiScanService
   // private readonly IApiScanRepository _scanRepository;
   private readonly IGateKeeperAgent _gatekeeperAgent;
   private readonly IEventBus _eventBus;
-  public readonly ITemporaryInMemoryStorage<ApiScanSchema.ApiScanResultResponse> _temporaryStorage;
+  // public readonly ITemporaryInMemoryStorage<ApiScanSchema.ApiScanResultResponse> _temporaryStorage;
   private readonly IRealtimeNotifier _notifier;
   private static readonly Guid GlobalGuid = Guid.Parse("12345678-1234-1234-1234-123456789ABC");
   private readonly ILogger<ApiScanService> _logger;
@@ -28,12 +28,12 @@ public class ApiScanService : IApiScanService
        // IApiScanRepository scanRepository,
        IRealtimeNotifier notifier,
   IGateKeeperAgent gatekeeperAgent,
-      ITemporaryInMemoryStorage<ApiScanSchema.ApiScanResultResponse> temporaryStorage,
+      // ITemporaryInMemoryStorage<ApiScanSchema.ApiScanResultResponse> temporaryStorage,
       IEventBus eventBus,
       ILogger<ApiScanService> logger)
   {
     // _scanRepository = scanRepository;
-    _temporaryStorage = temporaryStorage;
+    // _temporaryStorage = temporaryStorage;
     _gatekeeperAgent = gatekeeperAgent;
     _eventBus = eventBus;
     _logger = logger;
@@ -190,13 +190,13 @@ public class ApiScanService : IApiScanService
               .ToList()
       };
 
-      var storageResult = _temporaryStorage.StoreScanResult(GlobalGuid, "IngestAsync Function", response);
+      // var storageResult = _temporaryStorage.StoreScanResult(GlobalGuid, "IngestAsync Function", response);
 
-      if (!storageResult)
-      {
-        return ServiceResult<ApiScanSchema.ApiScanResultResponse>
-            .Fail("Failed to store scan result in temporary storage.");
-      }
+      // if (!storageResult)
+      // {
+      //   return ServiceResult<ApiScanSchema.ApiScanResultResponse>
+      //       .Fail("Failed to store scan result in temporary storage.");
+      // }
 
       // =========================================================
       // API Response
@@ -246,8 +246,8 @@ public class ApiScanService : IApiScanService
 
       _logger.LogInformation("event publish successful");
 
-      var isDatabaseUpdated = _temporaryStorage.StoreScanResult(temporaryRunForOnlyOne.ScanId, "StartApiScanExecutionAsync function", new ApiScanSchema.ApiScanResultResponse()); // mock the database update result
-      if (!isDatabaseUpdated) return ServiceResult<ApiScanSchema.AgentScanResponse>.Fail("Scan execution failed");
+      // var isDatabaseUpdated = _temporaryStorage.StoreScanResult(temporaryRunForOnlyOne.ScanId, "StartApiScanExecutionAsync function", new ApiScanSchema.ApiScanResultResponse()); // mock the database update result
+      // if (!isDatabaseUpdated) return ServiceResult<ApiScanSchema.AgentScanResponse>.Fail("Scan execution failed");
 
       _logger.LogInformation("Scan execution started successfully");
 
@@ -276,21 +276,25 @@ public class ApiScanService : IApiScanService
     try
     {
 
-      var isDatabaseUpdated = _temporaryStorage.StoreScanResult(request.ScanId, "UpdateUrlEndpointsAsync Function", new ApiScanSchema.ApiScanResultResponse()); // mock the database update result
-      Console.WriteLine($"database storage result {isDatabaseUpdated}");
-      if (!isDatabaseUpdated)
-      {
+      // var isDatabaseUpdated = _temporaryStorage.StoreScanResult(request.ScanId, "UpdateUrlEndpointsAsync Function", new ApiScanSchema.ApiScanResultResponse()); // mock the database update result
+      // Console.WriteLine($"database storage result {isDatabaseUpdated}");
+      // if (!isDatabaseUpdated)
+      // {
 
-        _logger.LogError("database information failed");
-        return ServiceResult<ApiScanSchema.defaultApiResponse>.Fail("Failed to update URL endpoints");
-      }
-      ;
+      //   _logger.LogError("database information failed");
+      //   return ServiceResult<ApiScanSchema.defaultApiResponse>.Fail("Failed to update URL endpoints");
+      // }
+      // ;
 
       _logger.LogInformation("database Storage successful");
       return ServiceResult<ApiScanSchema.defaultApiResponse>.Ok(new ApiScanSchema.defaultApiResponse
       {
         Message = "database Storage successful",
-        Success = true
+        Success = true,
+        Data = new Dictionary<string, object>
+        {
+          ["ScanId"] = request.ScanId
+        }
       });
     }
     catch (OperationCanceledException)

@@ -76,13 +76,16 @@ public class ApiScanController : ControllerBase
     [HttpPost("start-scan")]
     public async Task<IActionResult> UrlExecutionButton(List<ApiScanSchema.StartApiScanExecutionRequest> request, CancellationToken ct)
     {
+        Console.WriteLine("START SCAN HIT");
         // if (request.ScanId == Guid.Empty)
         //     return BadRequest("Invalid Id");
 
         var result = await _ApiScanService.StartApiScanExecutionAsync(request, ct);
 
-        if (!result.Success)
-            return NotFound(result);
+        Console.WriteLine($"Success = {result.Success}");
+        Console.WriteLine($"Message = {result.Message}");
+        // if (!result.Success)
+        //     return NotFound(result);
 
         return Ok(result);
     }

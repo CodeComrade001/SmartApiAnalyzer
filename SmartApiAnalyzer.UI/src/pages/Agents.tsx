@@ -16,12 +16,12 @@ import {
   AGENTS, PRESETS, categoryMeta, presetColorMap,
 } from "@/data/agentCatalog";
 import type { AgentCategory } from "@/data/agentCatalog";
-import { scanInitiationSwitch, ScanInitiationSwitchPayload } from "@/api/endpoints/logs";
+import { GLOBAL_UUID_FOR_TEST, scanInitiationSwitch, ScanInitiationSwitchPayload } from "@/api/endpoints/logs";
 import { ApiEndpoint, WebsiteApiGroup } from "@/types";
 import { scanInitiationSwitchPayloadNormalize } from '@/components/helpers/getallMethodEndpointGrouped';
 import { usePopUpNotify } from "@/hooks/use-pop-up-notify";
 import { HashGenerator } from "@/api/helpers/uniqueIdGenerator";
-import { connection } from "@/api/helpers/signalr";
+import { connection, connectSignalR, setCurrentScanId } from "@/api/helpers/signalr";
 
 /* ─── constants ─── */
 const HTTP_METHOD_COLORS: Record<string, string> = {
@@ -70,16 +70,15 @@ export default function AgentsPage() {
     setLastScanResults, setLastScanMeta,
     scanProgressValue,
   } = useScan();
-  console.log("Turbo Log  ~ AgentsPage ~ scanTargets:", scanTargets);
 
   const [customUrl, setCustomUrl] = useState("");
   const [expandedSites, setExpandedSites] = useState<Set<string>>(new Set());
   const [scanState, setScanState] = useState<"idle" | "scanning" | "done">("idle");
   const [progressLabel, setProgressLabel] = useState("");
   const [selectedWebsite, setSelectedWebsite] = useState<WebsiteApiGroup[]>([]);
-  console.log("Turbo Log  ~ AgentsPage ~ selectedWebsite:", selectedWebsite);
+  // console.log("Turbo Log  ~ AgentsPage ~ selectedWebsite:", selectedWebsite);
   const notifyPopUp = usePopUpNotify();
-  console.log("Turbo Log  ~ AgentsPage ~ selectedWebsite:", selectedWebsite);
+  // console.log("Turbo Log  ~ AgentsPage ~ selectedWebsite:", selectedWebsite);
 
   /* ── helpers ── */
   const toggleSiteExpanded = (id: string) => {
@@ -154,7 +153,6 @@ export default function AgentsPage() {
     }
 
     try {
-      await connection.start();
       setScanState("scanning");
       setScanProgressValue(0);
 
@@ -189,13 +187,25 @@ export default function AgentsPage() {
         scanTargets,
         Array.from(selectedAgents),
       );
+      console.log("Turbo Log  ~ handleRunScan ~ normalizePayload:", normalizePayload);
 
       const response = await scanInitiationSwitch(normalizePayload);
+      console.log("Turbo Log  ~ handleRunScan ~ response:", response);
+      setCurrentScanId(response.scanId);
 
-      await connection.invoke(
+      if (!response.success) {
+        return notify({
+          type: "error",
+          title: "Scan initiation failed",
+          message: `Failed to initiate scan with ID: ${response.scanId}.`,
+        });
+      }
+
+      const connectionInvocation = await connection.invoke(
         "JoinScan",
-        response.scanId
+        response.data.ScanId
       );
+      console.log("Turbo Log  ~ handleRunScan ~ connectionInvocation:", connectionInvocation);
 
       return notify({
         type: "success",
@@ -234,27 +244,17 @@ export default function AgentsPage() {
   }, [scanTargets]);
 
   useEffect(() => {
+    const init = async () => {
+      await connectSignalR();
 
-    connection.on("AgentProgress", (message) => {
-
-      console.log(message);
-
-      addScanLog(message);
-
-      setAgentScanStatuses(prev => ({
-        ...prev,
-        [message.agentName]:
-          message.status === "Completed"
-            ? "completed"
-            : "failed"
-      }));
-
-    });
-
-    return () => {
-      connection.off("AgentProgress");
+      connection.on("AgentProgress", message => {
+        console.log(message);
+      });
     };
 
+    init();
+
+    return () => connection.off("AgentProgress");
   }, []);
 
 
