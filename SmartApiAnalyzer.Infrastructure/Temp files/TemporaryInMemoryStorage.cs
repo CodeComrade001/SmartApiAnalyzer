@@ -19,6 +19,22 @@ public class TemporaryInMemoryStorage<T> : ITemporaryInMemoryStorage<T>
     return _storage.TryAdd(key, value);
   }
 
+
+
+  public bool GetIfUserExist(Guid tenantId)
+  {
+    return _storage.ContainsKey(tenantId.ToString());
+  }
+
+
+  public T? GetSUserResult(Guid tenancyReceivedId)
+
+  {
+    var key = $"{tenancyReceivedId}";
+    _storage.TryGetValue(key, out var value);
+    return value;
+  }
+
   public T? GetScanResult(Guid tenancyReceivedId, string agentName)
 
   {

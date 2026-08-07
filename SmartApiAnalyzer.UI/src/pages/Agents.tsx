@@ -201,9 +201,15 @@ export default function AgentsPage() {
         });
       }
 
+      const { ScanId, EventId } = response.data.data;
+
+      // const generatedKeyForEventsListening = `${ScanId}-${EventId}`
+      const generatedKeyForEventsListening = `${ScanId}`
+      console.log("Turbo Log  ~ handleRunScan ~ generatedKeyForEventsListening:", generatedKeyForEventsListening);
+
       const connectionInvocation = await connection.invoke(
         "JoinScan",
-        response.data.ScanId
+        generatedKeyForEventsListening
       );
       console.log("Turbo Log  ~ handleRunScan ~ connectionInvocation:", connectionInvocation);
 

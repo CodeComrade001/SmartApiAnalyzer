@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "wouter";
 import {
@@ -20,6 +20,7 @@ import { useScan } from "@/context/ScanContext";
 import { mockScanPayload, mockInsightFindings } from "@/services/data/mockData";
 import { categoryMeta, severityConfig } from "@/data/agentCatalog";
 import type { FindingSeverity, AgentCategory } from "@/data/agentCatalog";
+import { getUserDetailsByTenantId, GLOBAL_UUID_FOR_TEST } from "@/api/endpoints/logs";
 
 /* ─── motion ─── */
 const fadeUp = {
@@ -124,6 +125,16 @@ export default function Insights() {
     MEDIUM: findings.filter((f) => f.severity === "MEDIUM").length,
     LOW: findings.filter((f) => f.severity === "LOW").length,
   };
+
+  useEffect(() => {
+    const getUserDetails = async () => {
+      const userDetails = await getUserDetailsByTenantId(GLOBAL_UUID_FOR_TEST);
+      console.log("Turbo Log  ~ getUserDetails ~ userDetails:", userDetails);
+    };
+
+    getUserDetails();
+
+  }, [])
 
   return (
     <div className="flex flex-col gap-6">

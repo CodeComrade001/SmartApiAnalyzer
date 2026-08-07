@@ -8,6 +8,10 @@ public interface ITemporaryInMemoryStorage<T>
 
   T? GetScanResult(Guid tenancyReceivedId, string agentName);
 
+  T? GetSUserResult(Guid tenancyReceivedId);
+
+  bool GetIfUserExist(Guid tenancyReceivedId);
+
   bool RemoveScanResult(Guid tenancyReceivedId, string agentName);
 
   int Count(Guid tenancyReceivedId);

@@ -28,8 +28,6 @@ public class ApiScanController : ControllerBase
         var result = await _ApiScanService.IngestAsync(request, ct);
         Console.WriteLine(result);
 
-        var debugger = result;
-
         if (!result.Success)
             return BadRequest(result);
 
@@ -47,7 +45,7 @@ public class ApiScanController : ControllerBase
         return Ok(result);
     }
 
-    [HttpGet("{id:guid}")]
+    [HttpGet("user/{id:guid}")]
     public async Task<IActionResult> GetById(Guid id)
     {
         if (id == Guid.Empty)

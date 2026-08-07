@@ -17,7 +17,7 @@ public sealed class AgentCoordinator : ICoordinator
   private readonly IAgentSelector _selector;
   private readonly IRealtimeNotifier _notifier;
   private readonly ILogger<AgentCoordinator> _logger;
-  // private readonly ITemporaryInMemoryStorage<Object> _tempStorage;
+  private readonly ITemporaryInMemoryStorage<Object> _tempStorage;
 
   private static readonly TimeSpan AgentTimeout = TimeSpan.FromSeconds(30);
 
@@ -25,15 +25,15 @@ public sealed class AgentCoordinator : ICoordinator
       IAgentRegistry registry,
       IAgentSelector selector,
       IRealtimeNotifier notifier,
-      ILogger<AgentCoordinator> logger
-      // ITemporaryInMemoryStorage<Object> tempStorage
+      ILogger<AgentCoordinator> logger,
+      ITemporaryInMemoryStorage<Object> tempStorage
       )
   {
     _registry = registry;
     _selector = selector;
     _notifier = notifier;
     _logger = logger;
-    // _tempStorage = tempStorage;
+    _tempStorage = tempStorage;
   }
 
 
@@ -85,7 +85,9 @@ public sealed class AgentCoordinator : ICoordinator
       results.Add(result);
       MergePayload(evt, agent.Name, result);
 
-      // _tempStorage.StoreScanResult(evt.TenantId, agent.Name, result);
+      _tempStorage.StoreScanResult(evt.TenantId, agent.Name, result);
+
+      Console.WriteLine($"Each event id passed per agent running {evt.EventId}");
 
       await _notifier.NotifyAsync(new AgentProgressMessage
       {
@@ -95,7 +97,8 @@ public sealed class AgentCoordinator : ICoordinator
         Message = result.Message,
         Success = result.Success,
         Payload = result.PayloadObject,
-        Timestamp = DateTime.UtcNow
+        Timestamp = DateTime.UtcNow,
+        EventId = evt.EventId
       },
        evt, ct);
 
