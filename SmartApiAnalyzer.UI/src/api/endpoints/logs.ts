@@ -80,3 +80,10 @@ export const scanInitiationSwitch = async (
 }
 
 
+export const getUserDetailsByTenantId = async (tenantId: string) => {
+  const response = await api.get(
+    `/api/v1/user/${tenantId}`
+  );
+  console.log("Turbo Log  ~ getUserDetailsByTenantId ~ response:", response);
+}
+

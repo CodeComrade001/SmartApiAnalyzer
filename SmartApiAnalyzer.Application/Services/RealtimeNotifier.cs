@@ -20,9 +20,13 @@ public sealed class RealtimeNotifier : IRealtimeNotifier
       UserApprovedScanEvent? evt = null,
       CancellationToken ct = default)
   {
+    // var generatedKey = $"{message.ScanId}-{message.EventId}";
+    var generatedKey = $"{message.ScanId}";
+    Console.WriteLine($"Each key generated for each event: keyGenerated : {generatedKey}");
+
     await _hub
            .Clients
-           .Group(message.ScanId.ToString())
+           .Group(generatedKey)
            .SendAsync(
                "AgentProgress",
                message,

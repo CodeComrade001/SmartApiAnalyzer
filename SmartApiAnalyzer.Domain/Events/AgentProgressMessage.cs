@@ -15,4 +15,6 @@ public class AgentProgressMessage
   public object? Payload { get; set; }
 
   public DateTime Timestamp { get; set; }
+
+  public Guid EventId { get; set; }
 }
