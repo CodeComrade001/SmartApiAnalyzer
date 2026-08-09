@@ -48,6 +48,8 @@ public sealed class GateKeeper_Agent : IGateKeeperAgent
     {
       ct.ThrowIfCancellationRequested();
 
+      Console.WriteLine($"GateKeeper_Agent: Validating URL and discovering endpoints for {evt.domainUrl}");
+
       var rawUrl = evt.domainUrl?.Trim();
 
       if (string.IsNullOrWhiteSpace(rawUrl))
@@ -57,7 +59,7 @@ public sealed class GateKeeper_Agent : IGateKeeperAgent
 
       if (!Uri.TryCreate(rawUrl, UriKind.Absolute, out var uri))
       {
-        return Stop("Invalid absolute URL.", sw.Elapsed, AgentSeverity.Warning);
+        return Stop("Invalid absolute URL", sw.Elapsed, AgentSeverity.Warning);
       }
 
       if (!IsSupportedScheme(uri))

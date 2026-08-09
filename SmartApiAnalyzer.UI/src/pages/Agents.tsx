@@ -22,6 +22,7 @@ import { scanInitiationSwitchPayloadNormalize } from '@/components/helpers/getal
 import { usePopUpNotify } from "@/hooks/use-pop-up-notify";
 import { HashGenerator } from "@/api/helpers/uniqueIdGenerator";
 import { connection, connectSignalR, setCurrentScanId } from "@/api/helpers/signalr";
+import { SecureStorage } from "@/api/storage/temporary_storage";
 
 /* ─── constants ─── */
 const HTTP_METHOD_COLORS: Record<string, string> = {
@@ -190,16 +191,24 @@ export default function AgentsPage() {
       console.log("Turbo Log  ~ handleRunScan ~ normalizePayload:", normalizePayload);
 
       const response = await scanInitiationSwitch(normalizePayload);
-      console.log("Turbo Log  ~ handleRunScan ~ response:", response);
+
+      console.log("Turbo Log ~ handleRunScan ~ response:", response);
+
+
+
       setCurrentScanId(response.scanId);
 
       if (!response.success) {
+        setIsScanRunning(false);
         return notify({
           type: "error",
           title: "Scan initiation failed",
           message: `Failed to initiate scan with ID: ${response.scanId}.`,
         });
       }
+
+      //clear previous logs after a successful request
+      clearScanLogs();
 
       const { ScanId, EventId } = response.data.data;
 
@@ -251,17 +260,20 @@ export default function AgentsPage() {
 
   useEffect(() => {
     const init = async () => {
+      if (addScanLog.length === 0) return;
       await connectSignalR();
 
       connection.on("AgentProgress", message => {
-        console.log(message);
+        // if 
+        addScanLog(message);
+        console.log("Turbo Log  ~ Agents ~ AgentProgress:", message);
       });
     };
 
     init();
 
     return () => connection.off("AgentProgress");
-  }, []);
+  }, [addScanLog]);
 
 
   return (

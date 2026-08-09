@@ -33,8 +33,12 @@ public sealed class SecurityHeaders_Agent : IAgent
         {
             ct.ThrowIfCancellationRequested();
 
+            Console.WriteLine($"SecurityHeaders_Agent: Analyzing security headers for {evt}");
+
+
             if (!Uri.TryCreate(evt.domainUrl?.Trim(), UriKind.Absolute, out var uri))
                 return AgentRequestFactory.CriticalStop(Name, "Invalid URI.", sw.Elapsed);
+
 
             var result = await _service.AnalyzeAsync(uri, ct);
 

@@ -21,6 +21,7 @@ import { mockScanPayload, mockInsightFindings } from "@/services/data/mockData";
 import { categoryMeta, severityConfig } from "@/data/agentCatalog";
 import type { FindingSeverity, AgentCategory } from "@/data/agentCatalog";
 import { getUserDetailsByTenantId, GLOBAL_UUID_FOR_TEST } from "@/api/endpoints/logs";
+import { usePopUpNotify } from '@/hooks/use-pop-up-notify';
 
 /* ─── motion ─── */
 const fadeUp = {
@@ -77,7 +78,7 @@ function ScoreChip({ score }: { score: number }) {
 
 /* ─── page ─── */
 export default function Insights() {
-  const { lastScanResults, lastScanMeta } = useScan();
+  const { lastScanResults, lastScanMeta, notify } = useScan();
   type InsightCategory = { id: string; type: string; metric: string; trend: string; recommendation: string };
   const insights: InsightCategory[] = mockApi.getInsights();
   const isLoading = false
@@ -95,6 +96,7 @@ export default function Insights() {
   const scanMeta = hasScan
     ? lastScanMeta
     : { targets: mockScanPayload.targets, completedAt: mockScanPayload.completedAt, totalAgents: mockScanPayload.agentResults.length, duration: mockScanPayload.totalDuration };
+  const [isApiFetching, setIsApiFetching] = useState(false);
 
   /* severity counts */
   const counts: Record<FindingSeverity, number> = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0, PASS: 0 };
@@ -126,15 +128,29 @@ export default function Insights() {
     LOW: findings.filter((f) => f.severity === "LOW").length,
   };
 
-  useEffect(() => {
-    const getUserDetails = async () => {
+  async function getUserDetails() {
+    setIsApiFetching(true);
+    try {
       const userDetails = await getUserDetailsByTenantId(GLOBAL_UUID_FOR_TEST);
       console.log("Turbo Log  ~ getUserDetails ~ userDetails:", userDetails);
-    };
 
-    getUserDetails();
+      return notify({
+        type: "info",
+        title: "User Details Fetch",
+        message: "Message request for user details successful",
+      })
 
-  }, [])
+    } catch (error) {
+      console.error("Error fetching user details:", error);
+    } finally {
+      setIsApiFetching(false);
+    }
+  };
+
+  // useEffect(() => {
+
+
+  // }, [])
 
   return (
     <div className="flex flex-col gap-6">
@@ -155,11 +171,11 @@ export default function Insights() {
               <CheckCircle2 className="h-3 w-3" /> Live scan results
             </Badge>
           )}
-          <Link href="/dashboard/agents">
-            <Button size="sm" variant="outline" className="gap-1.5 text-xs">
-              <Play className="h-3.5 w-3.5" /> Run New Scan
-            </Button>
-          </Link>
+          {/* <Link href="/dashboard/agents"> */}
+          <Button disabled={isApiFetching} onClick={() => getUserDetails()} size="sm" variant="outline" className="gap-1.5 text-xs">
+            <Play className="h-3.5 w-3.5" /> Run New Scan
+          </Button>
+          {/* </Link> */}
         </div>
       </motion.div>
 

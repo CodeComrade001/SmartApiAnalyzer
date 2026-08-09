@@ -31,6 +31,8 @@ public sealed class CredentialCheck_Agent : IAgent
         {
             ct.ThrowIfCancellationRequested();
 
+            Console.WriteLine($"CredentialCheck_Agent: Analyzing credential exposure for {evt.domainUrl}");
+
             if (!Uri.TryCreate(evt.domainUrl?.Trim(), UriKind.Absolute, out var uri))
                 return AgentRequestFactory.CriticalStop(Name, "Invalid URL.", sw.Elapsed);
 

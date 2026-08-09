@@ -54,7 +54,7 @@ public sealed class AgentCoordinator : ICoordinator
     // must guard against a null NormalizedUri.
     var evt = new UserApprovedScanEvent(
         request.TenantId,
-        passedDomainUrl: string.Empty,
+        request.domainUrl,
         request.ApprovedRoutesAndMethods,
         statusCode: 200,
         responseTimeMs: 0,
@@ -87,7 +87,6 @@ public sealed class AgentCoordinator : ICoordinator
 
       _tempStorage.StoreScanResult(evt.TenantId, agent.Name, result);
 
-      Console.WriteLine($"Each event id passed per agent running {evt.EventId}");
 
       await _notifier.NotifyAsync(new AgentProgressMessage
       {

@@ -33,6 +33,23 @@ export interface ScanResult {
   detail: string;
 }
 
+export const agentPriority: Record<AgentKey, number> = {
+  UrlValidationAndEndpoints: 1,
+  DomainHijack: 2,
+  SslTlsCheck: 3,
+  SecurityHeaders: 4,
+  CredentialCheck: 5,
+  CorsPolicy: 6,
+  RedirectChain: 7,
+  MixedContent: 8,
+  RateLimitProbe: 9,
+  LatencyPerformance: 10,
+  Metrics: 11,
+  CostAnalysis: 12,
+  SecurityAgentEvaluation: 13,
+  Alert: 20,
+};
+
 export const AGENTS: AgentDef[] = [
   {
     key: "UrlValidationAndEndpoints", label: "URL Validation & Endpoints", category: "validation",
@@ -140,6 +157,25 @@ export const severityConfig: Record<FindingSeverity, {
   LOW: { label: "Low", color: "text-muted-foreground", bg: "from-muted/20 to-muted/5 border-border/30", icon: Info },
   PASS: { label: "Pass", color: "text-emerald-400", bg: "from-emerald-500/20 to-emerald-500/5 border-emerald-500/30", icon: CheckCircle2 },
 };
+
+
+
+export enum agentKeyPriority {
+  UrlValidationAndEndpoints = 1,   // Gatekeeper — runs first, always
+  DomainHijack = 2,   // DNS takeover / dangling CNAME
+  SslTlsCheck = 3,   // Certificate validity + TLS version
+  SecurityHeaders = 4,   // HSTS, CSP, X-Frame-Options, etc.
+  CredentialCheck = 5,   // Login form posture, cookies, exposed secrets
+  CorsPolicy = 6,   // CORS misconfiguration
+  RedirectChain = 7,   // HTTP→HTTPS redirect, loop detection
+  MixedContent = 8,   // HTTP resources on HTTPS pages
+  RateLimitProbe = 9,   // Rate limiting enforcement probe
+  LatencyPerformance = 10,  // TTFB + total latency
+  Metrics = 11,  // Status code, error rate, perf grade
+  CostAnalysis = 12,  // Cost score from latency + error signals
+  SecurityAgentEvaluation = 13,  // Aggregate security verdict (runs last of security tier)
+  Alert = 20,  // Notification dispatch — always final
+}
 
 export const MOCK_RESULTS: ScanResult[] = [
   { agent: "UrlValidationAndEndpoints", label: "URL Validation & Endpoints", status: "PASS", findings: 0, detail: "All endpoints reachable and responding correctly." },

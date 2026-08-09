@@ -4,7 +4,6 @@ const baseURL = import.meta.env.VITE_LOCAL_BACKEND_URL || "";
 
 export const connection = new signalR.HubConnectionBuilder()
   .withUrl(`${baseURL}/agents/endpoint/scan-result`)
-  .configureLogging(signalR.LogLevel.Trace)
   .withAutomaticReconnect()
   .build();
 console.log("Turbo Log  ~ connection:", connection);
