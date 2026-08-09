@@ -48,14 +48,20 @@ public class ApiScanController : ControllerBase
     [HttpGet("user/{id:guid}")]
     public async Task<IActionResult> GetById(Guid id)
     {
+        Console.WriteLine($"Received Id: {id}");
+        Console.WriteLine($"GetById was HIT ========");
+
         if (id == Guid.Empty)
             return BadRequest("Invalid Id");
 
+        Console.WriteLine($"Id wad verified successful ");
         var result = await _ApiScanService.GetByIdAsync(id);
 
+        Console.WriteLine($"result after getByIdAsync: {result}");
         if (!result.Success)
             return NotFound(result);
 
+        Console.WriteLine($"successful result after getByIdAsync: {result.Data}");
         return Ok(result);
     }
 
