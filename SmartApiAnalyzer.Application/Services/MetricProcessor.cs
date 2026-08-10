@@ -1,22 +1,23 @@
 using SmartApiAnalyzer.Application.Services.Interface.Events;
-using SmartApiAnalyzer.Application.UseCases.Engine;
 using SmartApiAnalyzer.Domain.Events;
+
+namespace SmartApiAnalyzer.Application.Services;
 
 public class MetricProcessor : IMetricProcessor
 {
-  private readonly ICostScoringEngine _costEngine;
+  // private readonly ICostScoringEngine _costEngine;
 
   // in-memory store (replace later with DB)
   private readonly Dictionary<string, List<LogIngestedEvent>> _store = new();
 
-  public MetricProcessor(ICostScoringEngine costEngine)
-  {
-    _costEngine = costEngine;
-  }
+  // public MetricProcessor(ICostScoringEngine costEngine)
+  // {
+  //   _costEngine = costEngine;
+  // }
 
   public void Process(LogIngestedEvent logEvent)
   {
-    var key = $"{logEvent.TenantId}:{logEvent.Endpoint}";
+    var key = $"{logEvent.TenantId}:{logEvent.domainUrl}";
 
     if (!_store.ContainsKey(key))
       _store[key] = new List<LogIngestedEvent>();

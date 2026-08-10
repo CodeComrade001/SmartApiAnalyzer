@@ -1,0 +1,85 @@
+using System.Diagnostics;
+using Microsoft.Extensions.Logging;
+using SmartApiAnalyzer.Application.Services.Interface.Agents;
+using SmartApiAnalyzer.Domain.Constants;
+using SmartApiAnalyzer.Domain.Entities.Models.Result.AgentServiceResults;
+using SmartApiAnalyzer.Domain.Events;
+using SmartApiAnalyzer.Infrastructure.Agents.Factory;
+
+// namespace SmartApiAnalyzer.Infrastructure.Agents;
+
+public sealed class SecurityHeaders_Agent : IAgent
+{
+    private readonly ISecurityHeaderService _service;
+    private readonly ILogger<SecurityHeaders_Agent> _logger;
+
+    public string Name => AgentType.SecurityHeaders.ToSystemName();
+    public int Priority => (int)AgentType.SecurityHeaders;
+
+    public SecurityHeaders_Agent(
+        ISecurityHeaderService service,
+        ILogger<SecurityHeaders_Agent> logger)
+    {
+        _service = service;
+        _logger = logger;
+    }
+
+    public async Task<IAgentResult> ExecuteAsync(
+      UserApprovedScanEvent evt,
+      CancellationToken ct)
+    {
+        var sw = Stopwatch.StartNew();
+        try
+        {
+            ct.ThrowIfCancellationRequested();
+
+            Console.WriteLine($"SecurityHeaders_Agent: Analyzing security headers for {evt}");
+
+
+            if (!Uri.TryCreate(evt.domainUrl?.Trim(), UriKind.Absolute, out var uri))
+                return AgentRequestFactory.CriticalStop(Name, "Invalid URI.", sw.Elapsed);
+
+
+            var result = await _service.AnalyzeAsync(uri, ct);
+
+            var payload = new AllAgentsPayload.SecurityHeaderAgentPayload
+            {
+                Score = result.Score,
+                Grade = result.Grade,
+                HasHsts = result.HasHsts,
+                HasCsp = result.HasCsp,
+                HasXFrameOptions = result.HasXFrameOptions,
+                HasXContentType = result.HasXContentTypeOpts,
+                HasReferrerPolicy = result.HasReferrerPolicy,
+                HasPermPolicy = result.HasPermissionsPolicy,
+                MissingHeaders = result.MissingHeaders,
+                PresentHeaders = result.PresentHeaders,
+            };
+
+            if (result.IsCritical)
+            {
+                _logger.LogWarning(
+                    "Critical security header failures on {Host}. Score: {Score}/100, Missing: {Missing}",
+                    uri.Host, result.Score, string.Join(", ", result.MissingHeaders));
+
+                return AgentRequestFactory.Warning(
+                    Name,
+                    $"Security header posture is critical. Score: {result.Score}/100. " +
+                    $"Missing: {string.Join(", ", result.MissingHeaders)}",
+                    sw.Elapsed, payload);
+            }
+
+            return AgentRequestFactory.Ok(
+                Name, $"Security headers checked. Score: {result.Score}/100 (Grade: {result.Grade}).",
+                sw.Elapsed, payload);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "SecurityHeaders agent fault");
+            return AgentRequestFactory.CriticalStop(
+                Name, $"Security header check inconclusive: {ex.GetType().Name} — {ex.Message}", sw.Elapsed);
+        }
+        finally { sw.Stop(); }
+    }
+}

@@ -1,5 +1,6 @@
 
-using Domain.Entities;
+
+using SmartApiAnalyzer.Domain.Entities;
 
 namespace SmartApiAnalyzer.Application.Services.Interface.RepositoriesInterface;
 

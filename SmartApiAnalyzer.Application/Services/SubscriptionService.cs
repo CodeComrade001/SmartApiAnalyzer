@@ -6,7 +6,7 @@ using Application.DTOs.Common;
 using Application.DTOs.Metrics;
 using SmartApiAnalyzer.Application.Services.Interface.ControllerServices;
 
-namespace Infrastructure.Services;
+namespace SmartApiAnalyzer.Application.Services;
 
 public class SUbscriptionService : ISubscriptionService
 {
