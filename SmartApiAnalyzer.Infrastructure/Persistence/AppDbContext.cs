@@ -1,4 +1,5 @@
-using Domain.Entities;
+using Microsoft.EntityFrameworkCore;
+using SmartApiAnalyzer.Domain.Entities;
 
 namespace SmartApiAnalyzer.Infrastructure.Persistence;
 

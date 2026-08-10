@@ -5,13 +5,11 @@
 using Application.DTOs.Common;
 using Application.DTOs.Metrics;
 using SmartApiAnalyzer.Application.Services.Interface.ControllerServices;
-using SmartApiAnalyzer.Application.UseCases.Engine;
-
-namespace Infrastructure.Services;
+namespace SmartApiAnalyzer.Application.Services;
 
 public class MetricsService : IMetricsService
 {
-    private readonly EndpointAnalyzerEngine endpointAnalyzerEngine;
+    // private readonly EndpointAnalyzerEngine endpointAnalyzerEngine;
 
 
     public async Task<ServiceResult<MetricsSchema.SummaryResponse>> GetSummaryAsync()

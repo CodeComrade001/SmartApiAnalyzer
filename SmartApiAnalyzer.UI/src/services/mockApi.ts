@@ -1,7 +1,5 @@
 import { Endpoint, TimeSeriesDataPoint, Insight, KPIOverview } from "@/types";
 
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
 const generateEndpoints = (): Endpoint[] => {
   const services = ["users", "orders", "auth", "payments", "inventory", "search"];
   const methods = ["GET", "POST", "PUT", "DELETE"];
@@ -11,7 +9,7 @@ const generateEndpoints = (): Endpoint[] => {
     const service = services[Math.floor(Math.random() * services.length)];
     const method = methods[Math.floor(Math.random() * methods.length)] as any;
     const path = `/api/${service}${Math.random() > 0.5 ? '/:id' : ''}${Math.random() > 0.7 ? '/details' : ''}`;
-    
+
     let status: "healthy" | "degraded" | "down" = "healthy";
     const rand = Math.random();
     if (rand > 0.95) status = "down";
@@ -38,12 +36,12 @@ const generateTimeSeriesData = (): TimeSeriesDataPoint[] => {
   const now = new Date();
   for (let i = 30; i >= 0; i--) {
     const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-    
+
     // Add some noise and spikes
     const isSpike = i === 12 || i === 5;
     const baseRequests = 50000 + Math.random() * 10000;
     const requests = isSpike ? baseRequests * 2.5 : baseRequests;
-    
+
     data.push({
       timestamp: d.toISOString(),
       requests: Math.floor(requests),
@@ -89,8 +87,7 @@ const MOCK_TIME_SERIES = generateTimeSeriesData();
 const MOCK_INSIGHTS = generateInsights(MOCK_ENDPOINTS);
 
 export const mockApi = {
-  getKPIs: async (): Promise<KPIOverview> => {
-    await delay(600);
+  getKPIs: (): KPIOverview => {
     return {
       totalRequests: 1420500,
       totalRequestsTrend: 12.5,
@@ -104,18 +101,15 @@ export const mockApi = {
     };
   },
 
-  getTimeSeriesData: async (): Promise<TimeSeriesDataPoint[]> => {
-    await delay(800);
+  getTimeSeriesData: (): TimeSeriesDataPoint[] => {
     return MOCK_TIME_SERIES;
   },
 
-  getEndpoints: async (): Promise<Endpoint[]> => {
-    await delay(1000);
+  getEndpoints: (): Endpoint[] => {
     return MOCK_ENDPOINTS;
   },
 
-  getInsights: async (): Promise<Insight[]> => {
-    await delay(700);
+  getInsights: (): Insight[] => {
     return MOCK_INSIGHTS;
   }
 };

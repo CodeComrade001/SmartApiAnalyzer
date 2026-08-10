@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, Github, ArrowRight } from "lucide-react";
+import { LayoutDashboard, Github, ArrowRight, Server } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { motion } from "framer-motion";
@@ -11,8 +11,12 @@ const navLinks = [
   { name: "FAQ", href: "#faq" },
 ];
 
+const serverNavLink = { name: "Server", href: "/server" };
+
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
+  const isServer = location === "/server";
+  const activeNavLinks = isServer ? [] : navLinks;
   return (
     <div className="relative min-h-screen w-full overflow-x-hidden bg-background text-foreground">
       {/* Top Nav */}
@@ -31,7 +35,7 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
           </Link>
 
           <nav className="hidden items-center gap-1 md:flex">
-            {navLinks.map((link) => (
+            {activeNavLinks.map((link) => (
               <a
                 key={link.name}
                 href={link.href}
@@ -40,6 +44,17 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
                 {link.name}
               </a>
             ))}
+            <Link
+              href={serverNavLink.href}
+              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm transition hover:bg-muted hover:text-foreground ${
+                isServer
+                  ? "bg-muted text-foreground font-medium"
+                  : "text-muted-foreground"
+              }`}
+            >
+              <Server className="h-3.5 w-3.5 text-[hsl(var(--brand-cyan))]" />
+              {serverNavLink.name}
+            </Link>
           </nav>
 
           <div className="flex items-center gap-2">

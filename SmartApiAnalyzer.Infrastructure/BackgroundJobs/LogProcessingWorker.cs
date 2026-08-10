@@ -1,17 +1,21 @@
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.DependencyInjection;
 using SmartApiAnalyzer.Application.Services.Interface.Events;
+using SmartApiAnalyzer.Domain.Events;
+using Microsoft.Extensions.Logging;
 
 public class LogProcessingWorker : BackgroundService
 {
   private readonly IEventQueue _queue;
-  private readonly IRealtimeNotifier _notifier;
+  private readonly IServiceScopeFactory _scopeFactory;
+  private static readonly Guid GlobalGuid = Guid.Parse("12345678-1234-1234-1234-123456789ABC");
 
   public LogProcessingWorker(
       IEventQueue queue,
-      IRealtimeNotifier notifier)
+      IServiceScopeFactory scopeFactory)
   {
     _queue = queue;
-    _notifier = notifier;
+    _scopeFactory = scopeFactory;
   }
 
   protected override async Task ExecuteAsync(
@@ -20,10 +24,25 @@ public class LogProcessingWorker : BackgroundService
     while (!stoppingToken.IsCancellationRequested)
     {
       var evt = await _queue.DequeueAsync(stoppingToken);
+      var sessionId = GlobalGuid;
 
-      // compute metrics here
+      using var scope = _scopeFactory.CreateScope();
 
-      await _notifier.NotifyAsync("New log received; processing started", evt);
+      var notifier =
+          scope.ServiceProvider.GetRequiredService<IRealtimeNotifier>();
+
+      var coordinator =
+          scope.ServiceProvider.GetRequiredService<ICoordinator>();
+
+      await notifier.NotifyAsync(
+          new AgentProgressMessage
+          {
+            ScanId = sessionId,
+            Message = "New log received; processing started"
+          },
+          evt);
+
+      await coordinator.RunAsync(sessionId, evt, stoppingToken);
     }
   }
 }

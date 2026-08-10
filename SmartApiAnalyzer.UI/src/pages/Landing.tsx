@@ -18,6 +18,13 @@ import {
   Lock,
   Layers,
   Workflow,
+  Server,
+  Code2,
+  ChevronRight,
+  Plug,
+  Terminal,
+  Shield,
+  FileCode2,
 } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -627,6 +634,218 @@ export default function Landing() {
             </AccordionItem>
           ))}
         </Accordion>
+      </section>
+
+      {/* ====== SERVER / BACKEND TEASER ====== */}
+      <section className="mx-auto max-w-6xl px-6 py-24">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.7 }}
+          className="relative overflow-hidden rounded-3xl border border-border/40 glass-strong p-1"
+        >
+          <div className="rounded-[22px] bg-card/40 px-8 py-12 sm:px-14 sm:py-16">
+            <div className="absolute -left-24 top-0 h-80 w-80 rounded-full opacity-15 blur-3xl"
+              style={{ background: "hsl(var(--brand-cyan))" }} />
+            <div className="absolute -right-24 bottom-0 h-80 w-80 rounded-full opacity-15 blur-3xl"
+              style={{ background: "hsl(var(--brand-violet))" }} />
+
+            <div className="relative grid gap-12 lg:grid-cols-2 lg:items-center">
+              <div>
+                <Badge variant="outline" className="glass mb-5 gap-2 rounded-full px-3 py-1 text-xs">
+                  <Server className="h-3 w-3 text-[hsl(var(--brand-cyan))]" />
+                  <span className="font-medium">Backend Infrastructure</span>
+                </Badge>
+                <h2 className="text-4xl font-bold tracking-tight sm:text-5xl">
+                  Powered by a{" "}
+                  <span
+                    className="gradient-text"
+                    style={{
+                      backgroundImage:
+                        "linear-gradient(135deg, hsl(var(--brand-cyan)) 0%, hsl(var(--brand-violet)) 60%, hsl(var(--brand-pink)) 100%)",
+                    }}
+                  >
+                    purpose-built engine.
+                  </span>
+                </h2>
+                <p className="mt-4 text-lg text-muted-foreground">
+                  Pulse runs on a Fastify v5 analysis engine that parses ASTs across five languages,
+                  computes complexity metrics per function, and passes results through an LLM interpretation
+                  layer — all in a single API call.
+                </p>
+                <ul className="mt-6 space-y-3">
+                  {[
+                    { icon: Cpu, text: "Multi-language AST parsing — TS, JS, Java, C++, Rust" },
+                    { icon: Layers, text: "Modular plugin architecture with DI container" },
+                    { icon: Code2, text: "Typed JSON responses, strict schema validation" },
+                  ].map((it) => (
+                    <li key={it.text} className="flex items-center gap-3">
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--brand-cyan))]/10 text-[hsl(var(--brand-cyan))]">
+                        <it.icon className="h-3.5 w-3.5" />
+                      </div>
+                      <span className="text-sm">{it.text}</span>
+                    </li>
+                  ))}
+                </ul>
+                <Link href="/server">
+                  <Button size="lg" variant="outline" className="mt-8 rounded-full glass px-7">
+                    Explore the Server
+                    <ChevronRight className="ml-1 h-4 w-4" />
+                  </Button>
+                </Link>
+              </div>
+
+              {/* Mini code preview */}
+              <div className="space-y-3">
+                <Card className="glass-strong overflow-hidden rounded-2xl">
+                  <div className="flex items-center gap-2 border-b border-border/40 bg-muted/40 px-5 py-3">
+                    <span className="h-2 w-2 rounded-full bg-[hsl(var(--brand-amber))]" />
+                    <span className="font-mono text-xs font-semibold text-[hsl(var(--brand-amber))]">POST</span>
+                    <span className="font-mono text-xs text-muted-foreground">/api/file/repos/analyze</span>
+                  </div>
+                  <pre className="px-5 py-4 text-xs leading-relaxed text-foreground/85">
+{`{
+  "repo": "archive.zip",
+  "language": "typescript"
+}`}
+                  </pre>
+                </Card>
+                <Card className="glass-strong overflow-hidden rounded-2xl">
+                  <div className="flex items-center gap-2 border-b border-border/40 bg-muted/40 px-5 py-3">
+                    <span className="h-2 w-2 rounded-full bg-[hsl(var(--brand-emerald))]" />
+                    <span className="font-mono text-xs font-semibold text-[hsl(var(--brand-emerald))]">200 OK</span>
+                  </div>
+                  <pre className="px-5 py-4 text-xs leading-relaxed text-foreground/85">
+{`{
+  "score": 7.8,
+  "risk": "medium",
+  "hotspots": [
+    "auth.ts",
+    "billing.ts"
+  ]
+}`}
+                  </pre>
+                </Card>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      </section>
+
+      {/* ====== MCP SERVER ====== */}
+      <section className="mx-auto max-w-6xl px-6 py-24">
+        <motion.div
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, margin: "-100px" }}
+          variants={stagger}
+          className="mx-auto mb-14 max-w-2xl text-center"
+        >
+          <motion.div variants={fadeUp}>
+            <Badge variant="outline" className="glass mb-4 gap-2 rounded-full px-3 py-1 text-xs">
+              <Plug className="h-3 w-3 text-[hsl(var(--brand-violet))]" />
+              MCP Server
+            </Badge>
+          </motion.div>
+          <motion.h2 variants={fadeUp} className="text-4xl font-bold tracking-tight sm:text-5xl">
+            Let AI agents query your code{" "}
+            <span className="gradient-text">complexity directly.</span>
+          </motion.h2>
+          <motion.p variants={fadeUp} className="mt-4 text-lg text-muted-foreground">
+            The Pulse MCP Server exposes your complexity analysis as structured tool calls.
+            AI coding assistants can query hotspots, risk levels, and refactoring suggestions — right from the editor, without leaving the chat.
+          </motion.p>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.7 }}
+          className="relative overflow-hidden rounded-3xl border border-[hsl(var(--brand-violet))]/20 glass-strong p-1"
+        >
+          <div className="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full blur-3xl opacity-15"
+            style={{ background: "hsl(var(--brand-violet))" }} />
+          <div className="pointer-events-none absolute -bottom-24 -right-24 h-72 w-72 rounded-full blur-3xl opacity-10"
+            style={{ background: "hsl(var(--brand-cyan))" }} />
+
+          <div className="relative rounded-[22px] bg-card/40 px-8 py-12 sm:px-14 sm:py-16">
+            <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
+              {/* left */}
+              <div className="space-y-6">
+                <ul className="space-y-3">
+                  {[
+                    { icon: Terminal, color: "violet", text: "Call analyze_file_complexity from Cursor or Claude and get a structured report in < 100ms." },
+                    { icon: Shield, color: "cyan", text: "Fully local — your source code never leaves the machine. MCP runs as a local server process." },
+                    { icon: FileCode2, color: "pink", text: "All 5 languages supported: TypeScript, JavaScript, Python, C#, Java." },
+                    { icon: Sparkles, color: "amber", text: "Refactoring suggestions ranked by risk level, projected complexity savings, and code location." },
+                  ].map((it) => {
+                    const colorMap: Record<string, string> = {
+                      violet: "bg-violet-500/10 text-violet-400",
+                      cyan: "bg-cyan-500/10 text-cyan-400",
+                      pink: "bg-pink-500/10 text-pink-400",
+                      amber: "bg-amber-500/10 text-amber-400",
+                    };
+                    return (
+                      <li key={it.text} className="flex items-start gap-3">
+                        <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${colorMap[it.color]}`}>
+                          <it.icon className="h-4 w-4" />
+                        </div>
+                        <span className="mt-1 text-sm text-muted-foreground">{it.text}</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+                <Link href="/dashboard/mcp-server">
+                  <Button variant="outline" className="rounded-full glass px-7">
+                    Explore MCP Server
+                    <ChevronRight className="ml-1 h-4 w-4" />
+                  </Button>
+                </Link>
+              </div>
+
+              {/* right — tool call preview */}
+              <div className="space-y-3">
+                <Card className="glass-strong overflow-hidden rounded-2xl">
+                  <div className="flex items-center gap-2 border-b border-border/40 bg-muted/40 px-5 py-3">
+                    <Plug className="h-3.5 w-3.5 text-[hsl(var(--brand-violet))]" />
+                    <span className="font-mono text-xs font-semibold text-[hsl(var(--brand-violet))]">MCP tool call</span>
+                    <span className="ml-auto font-mono text-[10px] text-muted-foreground">analyze_file_complexity</span>
+                  </div>
+                  <pre className="px-5 py-4 text-xs leading-relaxed text-foreground/80">{`{
+  "file_path": "src/auth/service.ts",
+  "language": "typescript",
+  "framework": "NestJS"
+}`}</pre>
+                </Card>
+                <Card className="glass-strong overflow-hidden rounded-2xl">
+                  <div className="flex items-center gap-2 border-b border-border/40 bg-muted/40 px-5 py-3">
+                    <span className="h-2 w-2 rounded-full bg-[hsl(var(--brand-emerald))]" />
+                    <span className="font-mono text-xs font-semibold text-[hsl(var(--brand-emerald))]">Response</span>
+                    <span className="ml-auto font-mono text-[10px] text-muted-foreground">ComplexityReport</span>
+                  </div>
+                  <pre className="px-5 py-4 text-xs leading-relaxed text-foreground/80">{`{
+  "avgScore": 74,
+  "risk": "HIGH",
+  "criticalUnits": 2,
+  "hotspots": [
+    "AuthService.login",
+    "TokenRefresher.rotate"
+  ],
+  "suggestion": "Extract token logic..."
+}`}</pre>
+                </Card>
+                <div className="flex items-center gap-2 rounded-xl border border-[hsl(var(--brand-violet))]/20 bg-[hsl(var(--brand-violet))]/5 px-4 py-3">
+                  <Sparkles className="h-3.5 w-3.5 shrink-0 text-[hsl(var(--brand-violet))]" />
+                  <span className="text-xs text-muted-foreground">
+                    Available for <strong className="text-foreground">Cursor</strong>, <strong className="text-foreground">Claude Desktop</strong>, and any MCP-compatible editor.
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </motion.div>
       </section>
 
       {/* ====== CTA ====== */}

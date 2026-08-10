@@ -1,0 +1,340 @@
+using System.Diagnostics;
+using Application.DTOs.ApiScan;
+using Application.DTOs.Common;
+using Infrastructure.Common;
+using Microsoft.Extensions.Logging;
+using SmartApiAnalyzer.Application.Interfaces.Temp_interfaces;
+using SmartApiAnalyzer.Application.Services.Interface.Agents;
+using SmartApiAnalyzer.Application.Services.Interface.ControllerServices;
+using SmartApiAnalyzer.Application.Services.Interface.Events;
+using SmartApiAnalyzer.Domain.Entities;
+using SmartApiAnalyzer.Domain.Enums;
+using SmartApiAnalyzer.Domain.Events;
+using SmartApiAnalyzer.Domain.Models;
+
+namespace SmartApiAnalyzer.Application.Services;
+
+public class ApiScanService : IApiScanService
+{
+  // private readonly IApiScanRepository _scanRepository;
+  private readonly IGateKeeperAgent _gatekeeperAgent;
+  private readonly IEventBus _eventBus;
+  public readonly ITemporaryInMemoryStorage<ApiScanSchema.ApiScanResultResponse> _temporaryStorage;
+  private readonly IRealtimeNotifier _notifier;
+  private static readonly Guid GlobalGuid = Guid.Parse("12345678-1234-1234-1234-123456789ABC");
+  private readonly ILogger<ApiScanService> _logger;
+
+  public ApiScanService(
+       // IApiScanRepository scanRepository,
+       IRealtimeNotifier notifier,
+  IGateKeeperAgent gatekeeperAgent,
+      ITemporaryInMemoryStorage<ApiScanSchema.ApiScanResultResponse> temporaryStorage,
+      IEventBus eventBus,
+      ILogger<ApiScanService> logger)
+  {
+    // _scanRepository = scanRepository;
+    _temporaryStorage = temporaryStorage;
+    _gatekeeperAgent = gatekeeperAgent;
+    _eventBus = eventBus;
+    _logger = logger;
+    _notifier = notifier;
+  }
+
+  /*//////////////////////////////////////////////////////////////
+                            HELPER METHODS
+    //////////////////////////////////////////////////////////////*/
+
+  private bool VerifyUserGuid(Guid id)
+  {
+    return _temporaryStorage.GetIfUserExist(id);
+  }
+
+  private Boolean verifyUpdateUrlPayload(ApiScanSchema.UpdateUrlEndpointsRequest receivedEndpoints)
+  {
+    var endpoints = receivedEndpoints.RoutesAndEndpoints;
+
+    if (endpoints == null || endpoints.Count == 0)
+    {
+      return false;
+    }
+
+    // foreach (var endpoint in endpoints)
+    // {
+    //   if (string.IsNullOrWhiteSpace(endpoint.Path) || endpoint.SuggestedMethods == null || endpoint.SuggestedMethods.Count == 0)
+    //   {
+    //     return false;
+    //   }
+    // }
+
+    return true;
+  }
+
+
+
+  /*//////////////////////////////////////////////////////////////
+                              MAIN METHODS 
+      //////////////////////////////////////////////////////////////*/
+  public Task<ServiceResult<List<ApiScanSchema.ApiScanResultResponse>>> GetAllAsync()
+  {
+    throw new NotImplementedException();
+  }
+
+  public Task<ServiceResult<ApiScanSchema.defaultApiResponse>> GetByIdAsync(Guid id)
+  {
+    if (!VerifyUserGuid(id))
+    {
+      return Task.FromResult(
+          ServiceResult<ApiScanSchema.defaultApiResponse>.Fail("User not found"));
+    }
+
+    var userData = _temporaryStorage.GetSUserResult(id);
+
+    return Task.FromResult(
+        ServiceResult<ApiScanSchema.defaultApiResponse>.Ok(
+            new ApiScanSchema.defaultApiResponse
+            {
+              Data = userData,
+              Success = true,
+              Message = "User data found"
+            }));
+  }
+
+  public async Task<ServiceResult<ApiScanSchema.ApiScanResultResponse>> IngestAsync(
+          ApiScanSchema.StartApiScanRequest request,
+          CancellationToken ct)
+  {
+    try
+    {
+      var stopwatch = Stopwatch.StartNew();
+
+      // =========================================================
+      // Create Scan Session Id
+      // =========================================================
+
+
+      // =========================================================
+      // Create Event
+      // =========================================================
+
+      var gateKeeperEvent = new GateKeeperIngestedEvent(
+          GlobalGuid,
+          request.DomainUrl,
+          0,
+          0,
+          DateTime.UtcNow);
+
+      // =========================================================
+      // Execute Gatekeeper Agent
+      // =========================================================
+
+      var gatekeeperResult = await _gatekeeperAgent.ExecuteAsync(
+          gateKeeperEvent,
+          ct);
+      Console.WriteLine($"GateKeeper Agent executed in {stopwatch.Elapsed.TotalSeconds} seconds with success: {gatekeeperResult.Success} found {gatekeeperResult.PayloadObject} endpoints.");
+      // =========================================================
+      // Validate Agent Result
+      // =========================================================
+
+      if (!gatekeeperResult.Success)
+      {
+        return ServiceResult<ApiScanSchema.ApiScanResultResponse>
+            .Fail(gatekeeperResult.Message);
+      }
+
+      // =========================================================
+      // Extract Payload
+      // =========================================================
+
+      if (!gatekeeperResult.Success)
+      {
+        return ServiceResult<ApiScanSchema.ApiScanResultResponse>
+            .Fail(gatekeeperResult.Message);
+      }
+
+      if (gatekeeperResult.Payload == null)
+      {
+        return ServiceResult<ApiScanSchema.ApiScanResultResponse>
+            .Fail(gatekeeperResult.Message);
+      }
+
+      var endpoints = gatekeeperResult.Payload.routesPayload;
+
+      // =========================================================
+      // Publish Event For Background Workers
+      // =========================================================
+
+      stopwatch.Stop();
+
+      // =========================================================
+      // Telemetry
+      // =========================================================
+
+      var telemetry = new ScanTelemetry
+      {
+        StatusCode = 200,
+        ResponseTimeMs = stopwatch.Elapsed.TotalMilliseconds,
+        Timestamp = DateTime.UtcNow
+      };
+
+      // =========================================================
+      // Create Database Entity
+      // =========================================================
+
+      var scanSession = new ApiScanSession
+      {
+        Id = GlobalGuid,
+        DomainUrl = request.DomainUrl,
+        Status = ScanStatus.PendingApproval,
+        Telemetry = telemetry,
+        Endpoints = endpoints
+      };
+
+      // =========================================================
+      // Save To Database
+      // =========================================================
+
+      var response = new ApiScanSchema.ApiScanResultResponse
+      {
+        ScanId = scanSession.Id,
+        DomainUrl = scanSession.DomainUrl,
+        Endpoints = scanSession.Endpoints
+              .Select(e => new ApiScanSchema.EndpointResponse
+              {
+                Path = e.route,
+                SuggestedMethods = e.methods
+              })
+              .ToList()
+      };
+
+      var storageResult = _temporaryStorage.StoreScanResult(GlobalGuid, "IngestAsync Function", response);
+
+      if (!storageResult)
+      {
+        return ServiceResult<ApiScanSchema.ApiScanResultResponse>
+            .Fail("Failed to store scan result in temporary storage.");
+      }
+
+      // =========================================================
+      // API Response
+      // =========================================================
+
+      Console.WriteLine($"Scan {GlobalGuid} completed in {stopwatch.Elapsed.TotalSeconds} seconds with {endpoints.Count()} endpoints found.");
+      return ServiceResult<ApiScanSchema.ApiScanResultResponse>
+          .Ok(response);
+    }
+    catch (OperationCanceledException)
+    {
+      return ServiceResult<ApiScanSchema.ApiScanResultResponse>
+          .Fail("Scan operation was cancelled");
+    }
+    catch (Exception ex)
+    {
+      AppLogger.Error(ex.ToString());
+
+      return ServiceResult<ApiScanSchema.ApiScanResultResponse>
+          .Fail("Scan failed");
+    }
+  }
+
+  public async Task<ServiceResult<ApiScanSchema.defaultApiResponse>> StartApiScanExecutionAsync(List<ApiScanSchema.StartApiScanExecutionRequest> request, CancellationToken ct)
+  {
+
+    // var isScanRequestTrue = request.ScanRequest;
+    // if (!isScanRequestTrue) return ServiceResult<ApiScanSchema.defaultApiResponse>.Confirmed("Agent Execution not initiated by user");
+
+    // Create a max of Three domain url and pass them ass different events
+
+    var temporaryRunForOnlyOne = request[0];
+
+    try
+    {
+
+      var userApprovedEvent = new UserApprovedScanEvent(
+              temporaryRunForOnlyOne.ScanId,
+              temporaryRunForOnlyOne.DomainUrl,
+              temporaryRunForOnlyOne.RoutesAndEndpoints,
+              0,
+              0,
+              DateTime.UtcNow,
+              temporaryRunForOnlyOne.Agents);
+
+      await _eventBus.PublishAsync(userApprovedEvent, ct);
+
+      _logger.LogInformation("event publish successful");
+
+      var isDatabaseUpdated = _temporaryStorage.StoreScanResult(temporaryRunForOnlyOne.ScanId, "StartApiScanExecutionAsync function", new ApiScanSchema.ApiScanResultResponse()); // mock the database update result
+      if (!isDatabaseUpdated) return ServiceResult<ApiScanSchema.defaultApiResponse>.Fail("Scan execution failed");
+
+      _logger.LogInformation("Scan execution started successfully");
+
+      return ServiceResult<ApiScanSchema.defaultApiResponse>.Ok(new ApiScanSchema.defaultApiResponse
+      {
+        Message = "Scan execution started successfully",
+        Success = true,
+        Data = new Dictionary<string, object>
+        {
+          ["ScanId"] = userApprovedEvent.TenantId,
+          ["EventId"] = userApprovedEvent.EventId
+        }
+      });
+    }
+    catch (OperationCanceledException)
+    {
+      return ServiceResult<ApiScanSchema.defaultApiResponse>
+          .Fail("Start Agent Execution operation was cancelled");
+    }
+    catch (Exception ex)
+    {
+      AppLogger.Error(ex.ToString());
+
+      return ServiceResult<ApiScanSchema.defaultApiResponse>
+          .Fail("Scan failed");
+    }
+  }
+
+
+  public async Task<ServiceResult<ApiScanSchema.defaultApiResponse>> UpdateUrlEndpointsAsync(Guid id, ApiScanSchema.UpdateUrlEndpointsRequest request, CancellationToken ct)
+  {
+    var isScanRequestTrue = verifyUpdateUrlPayload(request);
+    if (!isScanRequestTrue) return ServiceResult<ApiScanSchema.defaultApiResponse>.Fail("Invalid endpoints payload");
+
+    try
+    {
+
+      var isDatabaseUpdated = _temporaryStorage.StoreScanResult(request.ScanId, "UpdateUrlEndpointsAsync Function", new ApiScanSchema.ApiScanResultResponse()); // mock the database update result
+      Console.WriteLine($"database storage result {isDatabaseUpdated}");
+      if (!isDatabaseUpdated)
+      {
+
+        _logger.LogError("database information failed");
+        return ServiceResult<ApiScanSchema.defaultApiResponse>.Fail("Failed to update URL endpoints");
+      }
+      ;
+
+      _logger.LogInformation("database Storage successful");
+      return ServiceResult<ApiScanSchema.defaultApiResponse>.Ok(new ApiScanSchema.defaultApiResponse
+      {
+        Message = "database Storage successful",
+        Success = true,
+        Data = new Dictionary<string, object>
+        {
+          ["ScanId"] = request.ScanId
+        }
+      });
+    }
+    catch (OperationCanceledException)
+    {
+      return ServiceResult<ApiScanSchema.defaultApiResponse>
+          .Fail("Update URL endpoints operation was cancelled");
+    }
+    catch (Exception ex)
+    {
+      AppLogger.Error(ex.ToString());
+
+      return ServiceResult<ApiScanSchema.defaultApiResponse>
+          .Fail("Update URL endpoints failed");
+    }
+
+  }
+
+}
