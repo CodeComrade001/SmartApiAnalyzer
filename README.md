@@ -1,7 +1,4 @@
 # SmartApiAnalyzer
-
-> **Purpose of this document**: Provide an AI agent with a clear, end-to-end understanding of the project’s **purpose**, **constraints system (agent pipeline semantics)**, and **architecture** so it can reason about how the system works and how to extend it.
-
 ---
 
 ## 1. High-level purpose
