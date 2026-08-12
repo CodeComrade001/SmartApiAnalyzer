@@ -40,5 +40,14 @@ public sealed class UserApprovedScanEvent
     UserSelectedAgents = userSelectedAgents;
   }
 
+  public sealed record AgentWorkItem(
+    Guid Id,
+    string Endpoint,
+    string Method,
+    object? Payload)
+  {
+
+  };
+
   public List<AgentResult<object>> AgentResults { get; init; } = new();
 }
