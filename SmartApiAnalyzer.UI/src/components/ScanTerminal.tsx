@@ -149,8 +149,6 @@ export function ScanTerminal() {
     lastScanMeta,
   } = useScan();
 
-  console.log("Turbo Log ~ ScanTerminal ~ scanLogs:", scanLogs);
-
   const [, navigate] = useLocation();
 
   const [countdown, setCountdown] =

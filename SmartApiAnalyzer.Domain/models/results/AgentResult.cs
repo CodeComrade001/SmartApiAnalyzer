@@ -31,6 +31,7 @@ public sealed class AgentCriticalResult : IAgentResult
   }
 }
 
+
 public sealed class AgentResult<TPayload> : IAgentResult
 {
   public string AgentName { get; init; } = string.Empty;
