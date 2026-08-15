@@ -1,7 +1,4 @@
 # SmartApiAnalyzer
-
-
-
 ---
 
 ## 1. High-level purpose
