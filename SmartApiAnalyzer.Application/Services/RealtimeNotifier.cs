@@ -32,7 +32,7 @@ public sealed class RealtimeNotifier : IRealtimeNotifier
                message,
                ct);
 
-    Console.WriteLine($"Turbo Log  ~ RealtimeNotifier ~ NotifyAsync ~ message:||| agentName: {message.AgentName} ||||| scanId : {message.ScanId} ||||| agentMessage:  {message.Message}");
+    Console.WriteLine($"Turbo Log  ~ RealtimeNotifier ~ NotifyAsync ~ AgentName : {message.AgentName}");
 
   }
 }

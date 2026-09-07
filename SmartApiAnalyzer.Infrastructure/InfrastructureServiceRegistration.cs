@@ -94,19 +94,21 @@ public static class InfrastructureServiceRegistration
     {
         // services.AddScoped<AgentRequestFactory>();
 
-        services.AddScoped<IAgent, Security_Agent>();
-
+        services.AddScoped<IAgent, Alert_Agent>();
+        services.AddScoped<IAgent, CorsPolicy_Agent>();
         services.AddScoped<IAgent, CostAnalysis_Agent>();
+        services.AddScoped<IAgent, CredentialCheck_Agent>();
+        services.AddScoped<IAgent, DomainHijack_Agent>();
 
+        // invisible to all agent
         services.AddScoped<IGateKeeperAgent, GateKeeper_Agent>();
 
-        services.AddScoped<IAgent, SecurityHeaders_Agent>();
-
         services.AddScoped<IAgent, LatencyPerformance_Agent>();
-
         services.AddScoped<IAgent, Metrics_Agent>();
-
-        services.AddScoped<IAgent, CredentialCheck_Agent>();
+        services.AddScoped<IAgent, RedirectChain_Agent>();
+        services.AddScoped<IAgent, SecurityAgentEvaluation_Agent>();
+        services.AddScoped<IAgent, SecurityHeaders_Agent>();
+        services.AddScoped<IAgent, SslTlsCheck_Agent>();
     }
 
     // ======================================================

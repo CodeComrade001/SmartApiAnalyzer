@@ -46,4 +46,9 @@ public sealed class AgentRegistry : IAgentRegistry
 
     public IReadOnlyCollection<IAgent> GetAll()
      => _ordered;
+
+    public IReadOnlyCollection<IAgent> GetSelected(IReadOnlyList<string> agentNames)
+     => _ordered.Where(a => agentNames.Contains(a.Name, StringComparer.Ordinal))
+        .ToList()
+        .AsReadOnly();
 }

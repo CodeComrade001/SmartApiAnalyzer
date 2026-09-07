@@ -1,10 +1,9 @@
 import type { LucideIcon } from "lucide-react";
 import { CheckCircle2, Shield, Activity, Bell, AlertTriangle, AlertCircle, Info } from "lucide-react";
 
-export type AgentKey =
-  | "UrlValidationAndEndpoints" | "DomainHijack" | "SslTlsCheck"
+export type AgentKey = | "DomainHijack" | "SslTlsCheck"
   | "SecurityHeaders" | "CredentialCheck" | "CorsPolicy" | "RedirectChain"
-  | "MixedContent" | "RateLimitProbe" | "LatencyPerformance" | "Metrics"
+  | "LatencyPerformance" | "Metrics"
   | "CostAnalysis" | "SecurityAgentEvaluation" | "Alert";
 
 export type AgentCategory = "validation" | "security" | "performance" | "alerting";
@@ -34,15 +33,12 @@ export interface ScanResult {
 }
 
 export const agentPriority: Record<AgentKey, number> = {
-  UrlValidationAndEndpoints: 1,
   DomainHijack: 2,
   SslTlsCheck: 3,
   SecurityHeaders: 4,
   CredentialCheck: 5,
   CorsPolicy: 6,
   RedirectChain: 7,
-  MixedContent: 8,
-  RateLimitProbe: 9,
   LatencyPerformance: 10,
   Metrics: 11,
   CostAnalysis: 12,
@@ -51,10 +47,6 @@ export const agentPriority: Record<AgentKey, number> = {
 };
 
 export const AGENTS: AgentDef[] = [
-  {
-    key: "UrlValidationAndEndpoints", label: "URL Validation & Endpoints", category: "validation",
-    desc: "Crawls and validates all discovered endpoints for reachability and correct HTTP methods.",
-  },
   {
     key: "RedirectChain", label: "Redirect Chain", category: "validation",
     desc: "Traces HTTP redirect chains and flags loops, excessive hops, and insecure redirects.",
@@ -80,16 +72,8 @@ export const AGENTS: AgentDef[] = [
     desc: "Validates Cross-Origin Resource Sharing policies for overly-permissive configurations.",
   },
   {
-    key: "MixedContent", label: "Mixed Content", category: "security",
-    desc: "Identifies HTTP resources loaded on HTTPS pages that trigger browser warnings.",
-  },
-  {
     key: "SecurityAgentEvaluation", label: "Security Evaluation", category: "security",
     desc: "AI-driven evaluation aggregating all security signals into a unified risk score.",
-  },
-  {
-    key: "RateLimitProbe", label: "Rate Limit Probe", category: "performance",
-    desc: "Probes API endpoints for rate-limiting behaviour and measures throttle thresholds.",
   },
   {
     key: "LatencyPerformance", label: "Latency & Performance", category: "performance",
@@ -118,17 +102,12 @@ export const PRESETS: Preset[] = [
   {
     id: "security", label: "Security Suite", color: "pink",
     desc: "7 security agents: CORS, headers, TLS, credentials, domain, mixed content, and evaluation.",
-    agents: ["DomainHijack", "SslTlsCheck", "SecurityHeaders", "CredentialCheck", "CorsPolicy", "MixedContent", "SecurityAgentEvaluation"],
+    agents: ["DomainHijack", "SslTlsCheck", "SecurityHeaders", "CredentialCheck", "CorsPolicy", "SecurityAgentEvaluation"],
   },
   {
     id: "performance", label: "Performance Suite", color: "cyan",
     desc: "Latency, rate limits, cost modelling, and metrics across all your endpoints.",
-    agents: ["RateLimitProbe", "LatencyPerformance", "Metrics", "CostAnalysis"],
-  },
-  {
-    id: "quick", label: "Quick Check", color: "emerald",
-    desc: "Fast 3-agent check: URL validity, TLS certificate, and security headers.",
-    agents: ["UrlValidationAndEndpoints", "SslTlsCheck", "SecurityHeaders"],
+    agents: ["LatencyPerformance", "Metrics", "CostAnalysis"],
   },
 ];
 
@@ -178,15 +157,12 @@ export enum agentKeyPriority {
 }
 
 export const MOCK_RESULTS: ScanResult[] = [
-  { agent: "UrlValidationAndEndpoints", label: "URL Validation & Endpoints", status: "PASS", findings: 0, detail: "All endpoints reachable and responding correctly." },
   { agent: "SslTlsCheck", label: "SSL / TLS Check", status: "MEDIUM", findings: 2, detail: "TLS 1.0 still enabled on the API. Certificate expires in 14 days — renew soon to avoid downtime." },
   { agent: "SecurityHeaders", label: "Security Headers", status: "HIGH", findings: 3, detail: "Missing Content-Security-Policy, X-Frame-Options, and Permissions-Policy. These headers protect against XSS and clickjacking attacks." },
   { agent: "DomainHijack", label: "Domain Hijacking", status: "PASS", findings: 0, detail: "No dangling DNS records or vulnerable subdomains detected." },
   { agent: "CredentialCheck", label: "Credential Check", status: "CRITICAL", findings: 1, detail: "Potential API key exposed in /api/v1/config response body. Rotate this key immediately and audit access logs." },
   { agent: "CorsPolicy", label: "CORS Policy", status: "HIGH", findings: 1, detail: "Access-Control-Allow-Origin: * set on authenticated routes. This allows any site to make cross-origin requests using user credentials." },
-  { agent: "MixedContent", label: "Mixed Content", status: "LOW", findings: 1, detail: "One HTTP image resource loaded on the main HTTPS page. Browsers may block this, causing visual content to not load." },
   { agent: "RedirectChain", label: "Redirect Chain", status: "PASS", findings: 0, detail: "No redirect loops or chains exceeding 3 hops detected." },
-  { agent: "RateLimitProbe", label: "Rate Limit Probe", status: "MEDIUM", findings: 1, detail: "No rate limiting detected on POST /api/v1/orders. Without limits, this endpoint is vulnerable to brute-force or abuse attacks." },
   { agent: "LatencyPerformance", label: "Latency & Performance", status: "LOW", findings: 1, detail: "p95 latency at 620ms on GET /api/v1/users — slightly above the 500ms recommended threshold." },
   { agent: "Metrics", label: "Metrics Collection", status: "PASS", findings: 0, detail: "Metrics baseline established. Average TTFB: 142ms across all scanned endpoints." },
   { agent: "CostAnalysis", label: "Cost Analysis", status: "LOW", findings: 1, detail: "Estimated $38/month for current traffic patterns — within normal range but trending upward over the past 7 days." },

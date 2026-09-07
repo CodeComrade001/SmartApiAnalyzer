@@ -1,3 +1,6 @@
+using SmartApiAnalyzer.Domain.Entities.Models.Result.AgentServiceResults;
+using SmartApiAnalyzer.Domain.Models;
+
 namespace SmartApiAnalyzer.Domain.Events;
 
 public class AgentProgressMessage
@@ -17,4 +20,8 @@ public class AgentProgressMessage
   public DateTime Timestamp { get; set; }
 
   public Guid EventId { get; set; }
+
+  public string Level { get; set; }
+
+  public RouteInputDto WebsiteUrl { get; set; }
 }

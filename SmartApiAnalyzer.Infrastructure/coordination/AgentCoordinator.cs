@@ -99,6 +99,7 @@ public sealed class AgentCoordinator : ICoordinator
             evt,
             ct));
 
+
     var agentResults = await Task.WhenAll(agentTasks);
 
     pipeline.Stop();
@@ -228,7 +229,9 @@ public sealed class AgentCoordinator : ICoordinator
                   agent,
                   originalEvent,
                   result,
-                  workerToken);
+                    route,
+                  workerToken
+                  );
 
           if (result.StopProcessing)
           {
@@ -277,7 +280,7 @@ public sealed class AgentCoordinator : ICoordinator
         originalEvent.domainUrl,
         new List<RouteInputDto>
         {
-                route
+           route
         },
         originalEvent.StatusCode,
         originalEvent.ResponseTimeMs,
@@ -338,8 +341,10 @@ public sealed class AgentCoordinator : ICoordinator
       IAgent agent,
       UserApprovedScanEvent originalEvent,
       IAgentResult result,
+RouteInputDto route,
       CancellationToken ct)
   {
+
     await _notifier.NotifyAsync(
         new AgentProgressMessage
         {
@@ -348,11 +353,13 @@ public sealed class AgentCoordinator : ICoordinator
           Status = result.Success
                 ? "Completed"
                 : "Failed",
+          Level = result.Severity.ToString(),
           Message = result.Message,
           Success = result.Success,
           Payload = result.PayloadObject,
           Timestamp = DateTime.UtcNow,
-          EventId = originalEvent.EventId
+          EventId = originalEvent.EventId,
+          WebsiteUrl = route
         },
         originalEvent,
         ct);

@@ -12,8 +12,8 @@ public static class AgentTypeExtensions
         AgentType.CredentialCheck => "CredentialCheck",
         AgentType.CorsPolicy => "CorsPolicy",
         AgentType.RedirectChain => "RedirectChain",
-        AgentType.MixedContent => "MixedContent",
-        AgentType.RateLimitProbe => "RateLimitProbe",
+        // AgentType.MixedContent => "MixedContent",
+        // AgentType.RateLimitProbe => "RateLimitProbe",
         AgentType.LatencyPerformance => "LatencyPerformance",
         AgentType.Metrics => "Metrics",
         AgentType.CostAnalysis => "CostAnalysis",
@@ -32,8 +32,8 @@ public enum AgentType
   CredentialCheck = 5,   // Login form posture, cookies, exposed secrets
   CorsPolicy = 6,   // CORS misconfiguration
   RedirectChain = 7,   // HTTP→HTTPS redirect, loop detection
-  MixedContent = 8,   // HTTP resources on HTTPS pages
-  RateLimitProbe = 9,   // Rate limiting enforcement probe
+  // MixedContent = 8,   // HTTP resources on HTTPS pages
+  // RateLimitProbe = 9,   // Rate limiting enforcement probe
   LatencyPerformance = 10,  // TTFB + total latency
   Metrics = 11,  // Status code, error rate, perf grade
   CostAnalysis = 12,  // Cost score from latency + error signals
