@@ -1,47 +1,27 @@
-using Application.UseCases.IngestLog;
-using Application.Validators;
-
 using FluentValidation;
+using Microsoft.OpenApi.Models;
 using FluentValidation.AspNetCore;
-
-using Infrastructure.Services;
-
 using Microsoft.AspNetCore.Mvc;
-using SmartApiAnalyzer.Application.Services.Interface.ControllerServices;
-using SmartApiAnalyzer.Application.Services.Interface.Events;
-using SmartApiAnalyzer.Application.UseCases.Metrics;
+using SmartApiAnalyzer.Api.Validators;
+using SmartApiAnalyzer.Application.DependencyInjection;
+using SmartApiAnalyzer.Infrastructure.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// ======================================================
+// CORE FRAMEWORK SERVICES
+// ======================================================
 
-// =======================================================
-// SERVICE REGISTRATION
-// =======================================================
-
-
-// -------------------------------------------------------
-// 1. Controllers
-// Registers API controllers
-// -------------------------------------------------------
 builder.Services.AddControllers();
-
-
-// -------------------------------------------------------
-// 2. FluentValidation
-// Automatic request DTO validation
-// -------------------------------------------------------
+// builder.Services.AddDbContext<AppDbContext>(options =>
+//     options.UseSqlServer(
+//         builder.Configuration.GetConnectionString("DefaultConnection")));
 builder.Services
     .AddFluentValidationAutoValidation()
     .AddFluentValidationClientsideAdapters();
 
-// Scan assembly for all validators automatically
-// builder.Services.AddValidatorsFromAssemblyContaining<IngestLogRequestValidator>();
+builder.Services.AddValidatorsFromAssemblyContaining<IngestLogValidator>();
 
-
-// -------------------------------------------------------
-// 3. Custom Validation Response Format
-// Standardizes model validation errors
-// -------------------------------------------------------
 builder.Services.Configure<ApiBehaviorOptions>(options =>
 {
   options.InvalidModelStateResponseFactory = context =>
@@ -51,8 +31,7 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
           .Select(x => new
           {
             Field = x.Key,
-            Errors = x.Value!.Errors
-                  .Select(e => e.ErrorMessage)
+            Errors = x.Value!.Errors.Select(e => e.ErrorMessage)
           });
 
     return new BadRequestObjectResult(new
@@ -65,53 +44,82 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
 });
 
 
-// -------------------------------------------------------
-// 4. Application Services
-// Business logic layer
-// -------------------------------------------------------
-builder.Services.AddScoped<ILogService, LogService>();
-builder.Services.AddScoped<IMetricsService, MetricsService>();
-builder.Services.AddScoped<ISubscriptionService, SUbscriptionService>();
+builder.Services
+    .AddApplicationLayer()
+    .AddInfrastructureLayer(builder.Configuration);
 
+// ======================================================
+// SWAGGER UI
+// ======================================================
+builder.Services.AddSwaggerGen(c =>
+{
+  c.SwaggerDoc("v1", new OpenApiInfo { Title = "sMART_API_ANALYZER API", Version = "v1" });
 
-// -------------------------------------------------------
-// 5. Use Cases
-// Single responsibility workflows
-// -------------------------------------------------------
-builder.Services.AddScoped<IngestLogUseCase>();
-builder.Services.AddScoped<GenerateMetricsUseCase>();
+  // 🔹 Add JWT support in Swagger
+  c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+  {
+    Name = "Authorization",
+    Type = SecuritySchemeType.ApiKey,
+    Scheme = "Bearer",
+    BearerFormat = "JWT",
+    In = ParameterLocation.Header,
+    Description = "Enter 'Bearer <your token>'"
+  });
 
+  c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            new string[] {}
+        }
+    });
+});
 
-// -------------------------------------------------------
-// 6. Background Queue Infrastructure
-// Singleton because shared in-memory state
-// -------------------------------------------------------
-builder.Services.AddSingleton<IEventQueue, InMemoryEventQueue>();
-builder.Services.AddSingleton<IMetricProcessor, MetricProcessor>();
+// builder.Services.Configure<ApiBehaviorOptions>(options =>
+// {
+//   options.SuppressModelStateInvalidFilter = true;
+// });
 
+builder.Services.AddCors(options =>
+{
+  options.AddPolicy("Development", policy =>
+  {
+    policy
+          .WithOrigins(
+              "http://localhost:5173"
+          )
+          .AllowAnyMethod()
+          .AllowAnyHeader()
+          .AllowCredentials();
+  });
+});
 
-// -------------------------------------------------------
-// 7. Hosted Background Worker
-// Runs continuously after app startup
-// -------------------------------------------------------
-builder.Services.AddHostedService<LogProcessingWorker>();
-
+// ======================================================
+// BUILD APP
+// ======================================================
 
 var app = builder.Build();
 
+if (app.Environment.IsDevelopment() || app.Environment.IsStaging())
+{
+  app.UseSwagger();
+  app.UseSwaggerUI();
+}
 
-// =======================================================
+app.UseCors("Development");
+// ======================================================
 // HTTP PIPELINE
-// =======================================================
+// ======================================================
 
+app.MapHub<ScanHub>("/agents/endpoint/scan-result");
 
-// -------------------------------------------------------
-// Map controller endpoints
-// -------------------------------------------------------
 app.MapControllers();
 
-
-// -------------------------------------------------------
-// Start application
-// -------------------------------------------------------
 app.Run();

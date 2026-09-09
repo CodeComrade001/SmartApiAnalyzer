@@ -1,4 +1,4 @@
-namespace Domain.Entities;
+namespace SmartApiAnalyzer.Domain.Entities;
 
 public class EndpointMetrics
 {

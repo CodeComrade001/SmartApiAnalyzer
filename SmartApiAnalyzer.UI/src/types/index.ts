@@ -1,4 +1,55 @@
-import { z } from "zod";
+export interface WebsiteApiGroup {
+  id: string;
+  websiteUrl: string;
+  discoveredAt: string;
+
+  endpoints: ApiEndpoint[];
+
+  isSaved?: boolean;
+  hasChanges?: boolean;
+
+}
+
+
+export const HTTP_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
+
+export type HttpMethod = (typeof HTTP_METHODS)[number];
+
+
+export interface ApiEndpoint {
+  id: string;
+
+  inferredPath: string;
+
+  correctedPath?: string;
+
+  method: HttpMethod;
+
+  confidence: number;
+
+  selected: boolean;
+
+  status:
+  | "unverified"
+  | "verified"
+  | "ignored" |
+  "healthy" | "degraded" | "down";
+
+  endpointPayload?: string;
+}
+
+// export interface Endpoint {
+//   id: string;
+//   path: string;
+//   method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
+//   avgLatency: number;
+//   p95Latency: number;
+//   errorRate: number;
+//   requestVolume: number;
+//   costScore: number;
+//   status: "healthy" | "degraded" | "down";
+//   service: string;
+// }
 
 export interface Endpoint {
   id: string;

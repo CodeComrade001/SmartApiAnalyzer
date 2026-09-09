@@ -1,13 +1,9 @@
 
 
-using FluentValidation;
 using Application.DTOs;
-
-namespace Application.Validators;
-
+namespace SmartApiAnalyzer.Api.Validators;
 
 using FluentValidation;
-using System.Text.RegularExpressions;
 
 public class IngestLogValidator : AbstractValidator<IngestLogRequest>
 {
