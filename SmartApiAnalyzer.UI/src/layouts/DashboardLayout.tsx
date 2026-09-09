@@ -52,6 +52,7 @@ import { motion } from "framer-motion";
 import { MissionBriefToggle, MissionBrief } from "@/components/MissionBrief";
 import { NotificationCenter } from "@/components/NotificationCenter";
 import { ScanTerminal } from "@/components/ScanTerminal";
+import { deploymentModules } from "@/data/deploymentModules";
 
 const analyticsNavItems = [
   { name: "Overview", href: "/dashboard", icon: Home },
@@ -62,8 +63,35 @@ const analyticsNavItems = [
 const toolsNavItems = [
   { name: "Code Complexity", href: "/dashboard/code-complexity", icon: FileCode2 },
   { name: "Agent Scan", href: "/dashboard/agents", icon: Bot },
+  { name: "Agent Configuration", href: "/dashboard/agents/configuration", icon: Settings },
   { name: "MCP Server", href: "/dashboard/mcp-server", icon: Server },
 ];
+
+const deploymentNavGroups = [
+  {
+    label: "Release risk & permission",
+    slugs: ["risk-assessment", "readiness-permission", "failure-prediction"],
+  },
+  {
+    label: "Change intelligence",
+    slugs: ["dependency-impact", "cross-system-readiness", "change-collision"],
+  },
+  {
+    label: "Delivery orchestration",
+    slugs: ["deployment-ordering", "pr-context", "workaround-expiration"],
+  },
+].map((group) => ({
+  ...group,
+  items: group.slugs.map((slug) => {
+    const module = deploymentModules.find((candidate) => candidate.slug === slug);
+    if (!module) throw new Error(`Missing Deployment Intelligence module: ${slug}`);
+    return {
+      name: module.navLabel,
+      href: `/dashboard/deployment-intelligence/${module.slug}`,
+      icon: module.icon,
+    };
+  }),
+}));
 
 const accountNavItems = [
   { name: "Subscription", href: "/dashboard/subscription", icon: CreditCard },
@@ -131,6 +159,35 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     </SidebarMenuItem>
                   ))}
                 </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+
+            <SidebarGroup>
+              <SidebarGroupLabel>Deployment Intelligence</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <div className="space-y-3">
+                  {deploymentNavGroups.map((group) => (
+                    <div key={group.label}>
+                      <div className="ml-1">
+                        <SidebarGroupLabel>
+                          {group.label}
+                        </SidebarGroupLabel>
+                      </div>
+                      <SidebarMenu>
+                        {group.items.map((item) => (
+                          <SidebarMenuItem key={item.href}>
+                            <SidebarMenuButton asChild isActive={location === item.href} tooltip={item.name}>
+                              <Link href={item.href}>
+                                <item.icon className="h-4 w-4 " />
+                                <span>{item.name}</span>
+                              </Link>
+                            </SidebarMenuButton>
+                          </SidebarMenuItem>
+                        ))}
+                      </SidebarMenu>
+                    </div>
+                  ))}
+                </div>
               </SidebarGroupContent>
             </SidebarGroup>
 

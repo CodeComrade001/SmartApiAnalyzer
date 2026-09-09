@@ -17,6 +17,21 @@ import CodeComplexity from "./pages/CodeComplexity";
 import MCPServer from "./pages/MCPServer";
 import { ScanProvider } from "./context/ScanContext";
 import AgentsPage from "./pages/Agents";
+import AgentConfigurationIndex from "./pages/AgentConfigurationIndex";
+import AgentConfigurationPage from "./pages/AgentConfiguration";
+import DeploymentIntelligencePage from "./pages/DeploymentIntelligence";
+
+const deploymentRoutes = [
+  "risk-assessment",
+  "dependency-impact",
+  "cross-system-readiness",
+  "change-collision",
+  "deployment-ordering",
+  "pr-context",
+  "failure-prediction",
+  "workaround-expiration",
+  "readiness-permission",
+] as const;
 
 function LoadingFallback() {
   return (
@@ -49,11 +64,18 @@ function AppRouter() {
           <Route path="/dashboard" component={Dashboard} />
           <Route path="/dashboard/endpoints" component={Endpoints} />
           <Route path="/dashboard/insights" component={Insights} />
-          <Route path="/dashboard/subscription" component={Subscription} />
-          <Route path="/dashboard/settings" component={Settings} />
-          <Route path="/dashboard/agents" component={AgentsPage} />
           <Route path="/dashboard/code-complexity" component={CodeComplexity} />
           <Route path="/dashboard/mcp-server" component={MCPServer} />
+          <Route path="/dashboard/agents" component={AgentsPage} />
+          <Route path="/dashboard/agents/configuration" component={AgentConfigurationIndex} />
+          <Route path="/dashboard/agents/configuration/:agentKey" component={AgentConfigurationPage} />
+          {deploymentRoutes.map((moduleSlug) => (
+            <Route key={moduleSlug} path={`/dashboard/deployment-intelligence/${moduleSlug}`}>
+              {() => <DeploymentIntelligencePage moduleSlug={moduleSlug} />}
+            </Route>
+          ))}
+          <Route path="/dashboard/subscription" component={Subscription} />
+          <Route path="/dashboard/settings" component={Settings} />
           <Route component={NotFound} />
         </Switch>
       </Suspense>

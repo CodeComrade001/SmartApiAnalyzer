@@ -5,6 +5,11 @@ import {
   Activity, ArrowDownRight, ArrowUpRight, Zap, Coins, Globe, Server,
   TrendingUp, AlertCircle, CheckCircle2, Bot, Crosshair, ShieldAlert,
   ShieldCheck, Play, ChevronRight, Target, FileText,
+  Settings2,
+  GitBranch,
+  CircleCheck,
+  Layers3,
+  Gauge,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -19,6 +24,7 @@ import { mockKpis, mockTimeSeries } from "@/services/data/mockData";
 import { useScan } from "@/context/ScanContext";
 import { AGENTS, MOCK_RESULTS, categoryMeta, severityConfig } from "@/data/agentCatalog";
 import type { FindingSeverity } from "@/data/agentCatalog";
+import { deploymentModules } from "@/data/deploymentModules";
 
 /* ─── motion ─── */
 const fadeUp = {
@@ -28,10 +34,10 @@ const fadeUp = {
 const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.06 } } };
 
 const accentColors: Record<string, string> = {
-  violet:  "from-[hsl(var(--brand-violet))]/20 to-transparent border-[hsl(var(--brand-violet))]/30",
-  cyan:    "from-[hsl(var(--brand-cyan))]/20 to-transparent border-[hsl(var(--brand-cyan))]/30",
-  pink:    "from-[hsl(var(--brand-pink))]/20 to-transparent border-[hsl(var(--brand-pink))]/30",
-  amber:   "from-[hsl(var(--brand-amber))]/20 to-transparent border-[hsl(var(--brand-amber))]/30",
+  violet: "from-[hsl(var(--brand-violet))]/20 to-transparent border-[hsl(var(--brand-violet))]/30",
+  cyan: "from-[hsl(var(--brand-cyan))]/20 to-transparent border-[hsl(var(--brand-cyan))]/30",
+  pink: "from-[hsl(var(--brand-pink))]/20 to-transparent border-[hsl(var(--brand-pink))]/30",
+  amber: "from-[hsl(var(--brand-amber))]/20 to-transparent border-[hsl(var(--brand-amber))]/30",
   emerald: "from-[hsl(var(--brand-emerald))]/20 to-transparent border-[hsl(var(--brand-emerald))]/30",
 };
 
@@ -51,18 +57,25 @@ const costBreakdown = [
   { name: "Storage", value: 14 }, { name: "Egress", value: 10 }, { name: "Other", value: 6 },
 ];
 const recentActivity = [
-  { type: "success", title: "Deployment v2.18.4 succeeded",    desc: "All endpoints green",                time: "2m ago"  },
-  { type: "scan",    title: "Security scan completed",          desc: "2 critical, 3 high — 14 agents",   time: "18m ago" },
-  { type: "warning", title: "p95 latency spike on /checkout",  desc: "318ms (baseline 142ms)",             time: "34m ago" },
-  { type: "info",    title: "New endpoint discovered",          desc: "POST /api/webhooks/stripe",          time: "1h ago"  },
-  { type: "success", title: "Cost insight applied",             desc: "Saved $480/mo on /users/:id",       time: "3h ago"  },
-  { type: "warning", title: "Error rate above threshold",       desc: "/api/payments/refund 2.3%",         time: "6h ago"  },
+  { type: "success", title: "Deployment v2.18.4 succeeded", desc: "All endpoints green", time: "2m ago" },
+  { type: "scan", title: "Security scan completed", desc: "2 critical, 3 high — 14 agents", time: "18m ago" },
+  { type: "warning", title: "p95 latency spike on /checkout", desc: "318ms (baseline 142ms)", time: "34m ago" },
+  { type: "info", title: "New endpoint discovered", desc: "POST /api/webhooks/stripe", time: "1h ago" },
+  { type: "success", title: "Cost insight applied", desc: "Saved $480/mo on /users/:id", time: "3h ago" },
+  { type: "warning", title: "Error rate above threshold", desc: "/api/payments/refund 2.3%", time: "6h ago" },
 ];
+
+const deploymentOverviewGroups = [
+  { label: "Release risk & permission", slugs: ["risk-assessment", "readiness-permission", "failure-prediction"] },
+  { label: "Change intelligence", slugs: ["dependency-impact", "cross-system-readiness", "change-collision"] },
+  { label: "Delivery orchestration", slugs: ["deployment-ordering", "pr-context", "workaround-expiration"] },
+];
+
 
 const activityIcon = (t: string) => {
   if (t === "success") return <CheckCircle2 className="h-4 w-4 text-[hsl(var(--brand-emerald))]" />;
-  if (t === "warning") return <AlertCircle  className="h-4 w-4 text-[hsl(var(--brand-amber))]" />;
-  if (t === "scan")    return <ShieldCheck  className="h-4 w-4 text-[hsl(var(--brand-violet))]" />;
+  if (t === "warning") return <AlertCircle className="h-4 w-4 text-[hsl(var(--brand-amber))]" />;
+  if (t === "scan") return <ShieldCheck className="h-4 w-4 text-[hsl(var(--brand-violet))]" />;
   return <TrendingUp className="h-4 w-4 text-[hsl(var(--brand-cyan))]" />;
 };
 
@@ -120,6 +133,26 @@ export default function Dashboard() {
     selected: AGENTS.filter((a) => a.category === cat && selectedAgents.has(a.key)).length,
   }));
 
+  const deploymentState = deploymentModules.map((module) => {
+    let values = module.defaultValues;
+    let configured = false;
+    if (typeof window !== "undefined") {
+      try {
+        const stored = window.localStorage.getItem(`pulse-deployment-config:${module.key}`);
+        if (stored) {
+          configured = true;
+          values = { ...module.defaultValues, ...(JSON.parse(stored) as Record<string, string | number | boolean>) };
+        }
+      } catch {
+        configured = false;
+      }
+    }
+    return { module, configured, enabled: Boolean(values.enabled) };
+  });
+  const deploymentBySlug = Object.fromEntries(deploymentState.map((item) => [item.module.slug, item]));
+  const enabledDeploymentCount = deploymentState.filter((item) => item.enabled).length;
+  const configuredDeploymentCount = deploymentState.filter((item) => item.configured).length;
+
   return (
     <div className="flex flex-col gap-6">
 
@@ -137,13 +170,86 @@ export default function Dashboard() {
         </div>
       </motion.div>
 
+      {/* ── Deployment system overview ── */}
+      <motion.section
+        initial="hidden"
+        animate="show"
+        variants={stagger}
+        className="relative overflow-hidden rounded-3xl border border-[hsl(var(--deployment-signal))]/25 bg-gradient-to-br from-[hsl(var(--deployment-signal))]/10 via-card/70 to-[hsl(var(--brand-cyan))]/10 p-5 shadow-xl sm:p-6"
+      >
+        <div className="pointer-events-none absolute -right-20 -top-28 size-72 rounded-full bg-[hsl(var(--deployment-signal))]/10 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-32 left-1/3 size-72 rounded-full bg-[hsl(var(--brand-cyan))]/10 blur-3xl" />
+        <div className="relative">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <div className="flex size-9 items-center justify-center rounded-xl border border-[hsl(var(--deployment-signal))]/30 bg-[hsl(var(--deployment-signal))]/10">
+                  <GitBranch className="size-4 text-[hsl(var(--deployment-signal))]" />
+                </div>
+                <div>
+                  <h2 className="text-base font-semibold">Deployment system overview</h2>
+                  <p className="text-xs text-muted-foreground">Your release policy surface across risk, change, and delivery signals.</p>
+                </div>
+              </div>
+            </div>
+            <Link href="/dashboard/deployment-intelligence/risk-assessment">
+              <Button variant="outline" size="sm" className="gap-1.5 rounded-full border-[hsl(var(--deployment-signal))]/35 text-xs text-[hsl(var(--deployment-signal))] hover:bg-[hsl(var(--deployment-signal))]/10">
+                <Settings2 className="size-3.5" />
+                Manage deployment policy
+              </Button>
+            </Link>
+          </div>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            {[
+              { label: "Active policies", value: `${enabledDeploymentCount}/${deploymentModules.length}`, icon: CircleCheck, color: "text-emerald-400" },
+              { label: "Configured locally", value: `${configuredDeploymentCount}/${deploymentModules.length}`, icon: Settings2, color: "text-[hsl(var(--deployment-signal))]" },
+              { label: "Delivery surfaces", value: deploymentModules.length, icon: Layers3, color: "text-cyan-300" },
+            ].map((metric) => (
+              <motion.div key={metric.label} variants={fadeUp} className="rounded-2xl border border-border/50 bg-background/30 p-4">
+                <metric.icon className={`mb-3 size-4 ${metric.color}`} />
+                <p className="text-2xl font-bold tracking-tight">{metric.value}</p>
+                <p className="mt-1 text-[11px] text-muted-foreground">{metric.label}</p>
+              </motion.div>
+            ))}
+          </div>
+
+          <div className="mt-5 grid gap-4 lg:grid-cols-3">
+            {deploymentOverviewGroups.map((group) => (
+              <motion.div key={group.label} variants={fadeUp} className="rounded-2xl border border-border/50 bg-background/25 p-4">
+                <div className="mb-3 flex items-center gap-2">
+                  <Gauge className="size-3.5 text-[hsl(var(--deployment-signal))]" />
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{group.label}</p>
+                </div>
+                <div className="space-y-2">
+                  {group.slugs.map((slug) => {
+                    const item = deploymentBySlug[slug];
+                    if (!item) return null;
+                    const Icon = item.module.icon;
+                    return (
+                      <Link key={slug} href={`/dashboard/deployment-intelligence/${slug}`} className="group flex items-center gap-2.5 rounded-xl border border-border/40 bg-card/40 px-3 py-2 transition hover:border-[hsl(var(--deployment-signal))]/40 hover:bg-card/70">
+                        <Icon className="size-3.5 text-white/85" />
+                        <span className="min-w-0 flex-1 truncate text-xs">{item.module.navLabel}</span>
+                        <span className={`shrink-0 text-[9px] font-medium uppercase tracking-wider ${item.enabled ? "text-emerald-400" : "text-muted-foreground"}`}>
+                          {item.configured ? (item.enabled ? "Ready" : "Off") : "Draft"}
+                        </span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </motion.section>
+
       {/* ── KPI strip ── */}
       <motion.div initial="hidden" animate="show" variants={stagger} className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-        <MetricCard title="Total Requests"   value={kpis?.totalRequests.toLocaleString() || "—"} trend={kpis?.totalRequestsTrend ?? 0}  description="vs last month" icon={Globe}     accent="violet"  invertTrend />
-        <MetricCard title="Avg Latency"      value={`${kpis?.avgLatency || 0}ms`}                trend={kpis?.avgLatencyTrend ?? 0}      description="vs last month" icon={Activity}  accent="cyan"   />
-        <MetricCard title="Error Rate"       value={`${kpis?.errorRate || 0}%`}                  trend={kpis?.errorRateTrend ?? 0}       description="vs last month" icon={Zap}       accent="pink"   />
-        <MetricCard title="Cost Score"       value={`${kpis?.costScore || 0}/100`}               trend={kpis?.costScoreTrend ?? 0}       description="vs last month" icon={Coins}     accent="amber"   invertTrend />
-        <MetricCard title="Active Endpoints" value={kpis?.activeEndpoints || 0}                  trend={0}                               description="stable"        icon={Server}    accent="emerald" />
+        <MetricCard title="Total Requests" value={kpis?.totalRequests.toLocaleString() || "—"} trend={kpis?.totalRequestsTrend ?? 0} description="vs last month" icon={Globe} accent="violet" invertTrend />
+        <MetricCard title="Avg Latency" value={`${kpis?.avgLatency || 0}ms`} trend={kpis?.avgLatencyTrend ?? 0} description="vs last month" icon={Activity} accent="cyan" />
+        <MetricCard title="Error Rate" value={`${kpis?.errorRate || 0}%`} trend={kpis?.errorRateTrend ?? 0} description="vs last month" icon={Zap} accent="pink" />
+        <MetricCard title="Cost Score" value={`${kpis?.costScore || 0}/100`} trend={kpis?.costScoreTrend ?? 0} description="vs last month" icon={Coins} accent="amber" invertTrend />
+        <MetricCard title="Active Endpoints" value={kpis?.activeEndpoints || 0} trend={0} description="stable" icon={Server} accent="emerald" />
       </motion.div>
 
       {/* ── Agent Scan cards ── */}
@@ -307,11 +413,11 @@ export default function Dashboard() {
                 <AreaChart data={timeSeries} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorLatency" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%"  stopColor="hsl(var(--brand-violet))" stopOpacity={0.6} />
+                      <stop offset="5%" stopColor="hsl(var(--brand-violet))" stopOpacity={0.6} />
                       <stop offset="95%" stopColor="hsl(var(--brand-violet))" stopOpacity={0} />
                     </linearGradient>
                     <linearGradient id="colorReq" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%"  stopColor="hsl(var(--brand-cyan))" stopOpacity={0.4} />
+                      <stop offset="5%" stopColor="hsl(var(--brand-cyan))" stopOpacity={0.4} />
                       <stop offset="95%" stopColor="hsl(var(--brand-cyan))" stopOpacity={0} />
                     </linearGradient>
                   </defs>
@@ -319,8 +425,8 @@ export default function Dashboard() {
                   <XAxis dataKey="timestamp" stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => new Date(v).toLocaleDateString(undefined, { month: "short", day: "numeric" })} />
                   <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}ms`} />
                   <Tooltip contentStyle={tooltipStyle} labelFormatter={(v) => new Date(v).toLocaleDateString()} />
-                  <Area type="monotone" dataKey="latency"  stroke="hsl(var(--brand-violet))" strokeWidth={2} fill="url(#colorLatency)" />
-                  <Area type="monotone" dataKey="requests" stroke="hsl(var(--brand-cyan))"   strokeWidth={2} fill="url(#colorReq)" />
+                  <Area type="monotone" dataKey="latency" stroke="hsl(var(--brand-violet))" strokeWidth={2} fill="url(#colorLatency)" />
+                  <Area type="monotone" dataKey="requests" stroke="hsl(var(--brand-cyan))" strokeWidth={2} fill="url(#colorReq)" />
                 </AreaChart>
               </ResponsiveContainer>
             </CardContent>
@@ -337,7 +443,7 @@ export default function Dashboard() {
                 <BarChart data={timeSeries} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="costBar" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%"  stopColor="hsl(var(--brand-pink))"  stopOpacity={1} />
+                      <stop offset="5%" stopColor="hsl(var(--brand-pink))" stopOpacity={1} />
                       <stop offset="95%" stopColor="hsl(var(--brand-amber))" stopOpacity={0.8} />
                     </linearGradient>
                   </defs>
